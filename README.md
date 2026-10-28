@@ -54,4 +54,35 @@ Details zu Anforderungen, Sensoren und offenen Punkten: [REQUIREMENTS.md](REQUIR
 
 ## Repo-Struktur
 
-Noch leer. Geplant sind zum Beispiel Ordner für den Arduino-Code, die Schaltpläne und die 3D-Dateien.
+PlatformIO-Projekt mit mehreren Programmen. In VS Code unten in der Statusleiste die
+Umgebung wählen, dann hochladen und den Seriellen Monitor öffnen (9600 Baud).
+
+| Umgebung | Ordner | Zweck |
+|---|---|---|
+| `env:rfidtest` | `src/rfidtest/` | RC522 dauerhaft abfragen und Fehler erklären, Kabeltest mit `k` |
+| `env:bauteiltest` | `src/bauteiltest/` | jedes Bauteil einzeln prüfen (Menü im Seriellen Monitor) |
+| `env:codieren` | `src/codieren/` | Medikamentenplan auf eine Karte schreiben (Profile 1–3) |
+| `env:decodieren` | `src/decodieren/` | Karte lesen und Plan anzeigen |
+
+- `include/Hardware.h`: Pinbelegung, Servowinkel, Sensorpegel
+- `lib/PillCardFormat/`: Kartenformat, Lesen und Schreiben (von allen Programmen genutzt).
+  Funktioniert mit dem I²C-Leser und dem SPI-Board, umgeschaltet in `platformio.ini`.
+- `lib/MFRC522_I2C/`: Bibliothek für den I²C-Leser, Kopie von `kkloesener/MFRC522_I2C`
+  (Public Domain) mit einer Korrektur, damit sie auf dem Uno kompiliert
+- `docs/Verkabelung.md`: Verkabelung, Stromversorgung, Testreihenfolge
+
+### Kartenformat
+
+Auf MIFARE-Classic-Karten in Sektor 1 (Blöcke 4–6, 48 Byte), Werksschlüssel `FF…FF`:
+
+| Bytes | Inhalt |
+|---|---|
+| 0–1 | Kennung `PC` |
+| 2 | Formatversion (1) |
+| 3–4 | Personen-ID |
+| 5–16 | Name (max. 11 Zeichen) |
+| 17 | Anzahl Einnahmezeitpunkte (max. 4) |
+| 18–37 | 4 × Einnahme: Stunde, Minute, Anzahl Kammer 1/2/3 |
+| 38–43 | verschriebene Menge je Kammer (3 × 16 Bit) |
+| 44–46 | reserviert |
+| 47 | CRC-8-Prüfsumme |
