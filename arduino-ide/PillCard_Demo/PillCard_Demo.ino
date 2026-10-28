@@ -39,7 +39,7 @@
 
 // ===== Einstellungen =====
 
-const bool RFID_AUF_ESP = true;   // false, sobald der Pi die Karten liest
+const bool RFID_AUF_ESP = false;  // true nur, wenn der RC522 wieder am ESP32 hängt
 const bool PI_VERBUNDEN = false;  // nur bei der 3-Kabel-Alternative true; über USB bleibt es false
 
 // Pläne für die Demo. Später kennt nur noch der Pi diese Zuordnung.
@@ -195,7 +195,8 @@ void mikroAnzeigen() {
       if (wert > hoch) hoch = wert;
     }
     int pegel = hoch - tief;
-    Serial.printf("Pegel %4d %s\n", pegel, pegel >= MIC_SCHWELLE ? "<-- KLACK" : "");
+    // Rohwerte mit ausgeben: immer 0 = kein Signal am Pin, immer 4095 = Pin hängt an 3.3V
+    Serial.printf("Pegel %4d  (roh %4d-%4d) %s\n", pegel, tief, hoch, pegel >= MIC_SCHWELLE ? "<-- KLACK" : "");
 
     // Balken: 16 Zeichen = doppelte Schwelle, ab Zeichen 8 liegt man über der Schwelle
     char balken[17];
