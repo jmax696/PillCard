@@ -26,8 +26,11 @@ ORDNER = Path(__file__).resolve().parent
 UNBEKANNT = ORDNER / "unbekannte_uids.txt"
 
 AUFTRAG_GRUND = 20     # s Grundzeit für einen Auftrag ...
-PRO_TABLETTE = 4       # ... plus so viel pro Tablette (Servo, Hinhören, zweiter Versuch)
+PRO_TABLETTE = 5       # ... plus so viel pro Tablette (Servo, Hinhören, zweiter Versuch)
 KARTE_SPERRE = 3       # s, so lange zählt dieselbe Karte nicht noch einmal
+LESER_PRUEFEN = 2      # s, so oft wird ohne Karte geprüft, ob der RC522 noch richtig eingestellt ist
+RF_CFG, TX_CONTROL, VERSION = 0x26, 0x14, 0x37   # Register des RC522
+VERSTAERKUNG = 0x70    # RFCfgReg: Antennenverstärkung auf Maximum (48 dB), hilft bei kleinen Chips
 ANTWORTEN = ("BEREIT", "OK", "TABLETTE", "FERTIG", "FEHLER")
 
 
@@ -77,6 +80,19 @@ class Esp:
                 return {int(t[1:].split("=")[0]): int(t.split("=")[1]) for t in zeile[2:]}
         print("  !! ESP32 hat nicht rechtzeitig FERTIG gemeldet")
         return None
+
+
+def leser_einrichten(leser):
+    """Grundeinstellung des RC522: Antenne an, Verstärkung auf Maximum."""
+    leser.MFRC522_Init()
+    leser.Write_MFRC522(RF_CFG, VERSTAERKUNG)
+
+
+def leser_ok(leser):
+    """False, wenn der RC522 zwischendurch neu gestartet ist (z. B. Wackelkontakt, Spannungseinbruch).
+    Danach ist die Antenne aus und er sieht keine Karte mehr, bis man ihn neu einrichtet."""
+    return (leser.Read_MFRC522(RF_CFG) == VERSTAERKUNG
+            and leser.Read_MFRC522(TX_CONTROL) & 0x03 == 0x03)
 
 
 def uid_lesen(leser):
@@ -149,15 +165,24 @@ def main():
         return
 
     leser = MFRC522()  # SPI0, RST an Pin 22 (GPIO25)
-    leser.Write_MFRC522(0x26, 0x70)  # RFCfgReg: Antennenverstärkung auf Maximum (48 dB), hilft bei kleinen Chips
+    leser_einrichten(leser)
     esp = None if args.uids else Esp()
     print("Bereit, Karte hinhalten ... (Strg+C beendet)")
 
     letzte_uid, letzte_zeit = None, 0.0
+    geprueft = time.time()
     try:
         while True:
             uid = uid_lesen(leser)
             if not uid:
+                if time.time() - geprueft > LESER_PRUEFEN:
+                    geprueft = time.time()
+                    if not leser_ok(leser):
+                        version = leser.Read_MFRC522(VERSION)
+                        print(f"[{jetzt():%H:%M:%S}] !! Kartenleser war zurückgesetzt (Version {version:#04x}), "
+                              "richte ihn neu ein" + (" – keine Antwort, Kabel prüfen" if version in (0, 0xFF) else ""),
+                              flush=True)
+                        leser_einrichten(leser)
                 time.sleep(0.1)
                 continue
             # Liegt die Karte noch auf, zählt sie nicht noch einmal

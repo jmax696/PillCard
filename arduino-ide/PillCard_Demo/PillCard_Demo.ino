@@ -62,7 +62,8 @@ const int WINKEL_AUSGABE[ANZAHL_KAMMERN] = {90, 90, 90};
 
 const uint8_t  MAX_PRO_KAMMER   = 9;    // mehr Tabletten pro Kammer nimmt der ESP32 nicht an (einstellig fürs Display)
 const uint8_t  VERSUCHE         = 2;    // so oft fährt der Servo, wenn das Mikrofon nichts hört
-const uint16_t SERVO_ZURUECK_MS = 500;  // Zeit für den Rückweg, bevor die nächste Tablette kommt
+const uint16_t SERVO_ANFAHREN_MS = 300; // vor jeder Tablette erst in Ruhelage, falls er verschoben wurde
+const uint16_t SERVO_ZURUECK_MS  = 800; // Zeit für den Rückweg; erst danach kommt die nächste Tablette
 
 // Mikrofon: Ab dem Servo-Befehl wird MIC_FENSTER_MS lang gemessen, in Stücken von 50 ms.
 // Die ersten MIC_IGNORIEREN_MS zählen nicht, da ist vor allem der Servo laut.
@@ -216,13 +217,16 @@ void mikroAnzeigen() {
 
 // ===== Ausgabe =====
 
-/** Gibt eine Tablette aus einer Kammer aus und prüft mit dem Mikrofon; true = Tablette gehört. */
+/** Gibt eine Tablette aus einer Kammer aus und prüft mit dem Mikrofon; true = Tablette gehört.
+ *  Der Servo startet immer aus der Ruhelage und steht danach wieder dort, angesteuert.
+ *  Loslassen (servoAus) erst, wenn die Kammer fertig ist. */
 bool tabletteAusgeben(uint8_t kammer, bool verlaufZeigen) {
+  servoWinkel(kammer, WINKEL_RUHE[kammer]);     // sichere Ausgangslage, auch wenn er verschoben wurde
+  delay(SERVO_ANFAHREN_MS);
   servoWinkel(kammer, WINKEL_AUSGABE[kammer]);
   int pegel = hinhoeren(verlaufZeigen);  // Servo bleibt solange in Ausgabeposition
   servoWinkel(kammer, WINKEL_RUHE[kammer]);
   delay(SERVO_ZURUECK_MS);
-  servoAus(kammer);
 
   bool gehoert = pegel >= MIC_SCHWELLE;
   Serial.printf("  Mikrofon Kammer %u: Pegel %d, Schwelle %d -> %s\n",
@@ -260,6 +264,7 @@ void auftragAusfuehren(const Auftrag& a) {
       if (gehoert) ausgegeben[k]++;
       else allesDa = false;
     }
+    if (a.anzahl[k] > 0) servoAus(k);  // Kammer fertig, Servo steht in Ruhelage: jetzt loslassen
   }
 
   // Abschlusszeile: was laut Mikrofon wirklich rauskam
@@ -374,6 +379,7 @@ void befehlAusfuehren(String zeile) {
     int kammer = klein.substring(5).toInt() - 1;
     if (kammer < 0 || kammer >= ANZAHL_KAMMERN) { Serial.println("probe 1, probe 2 oder probe 3"); return; }
     tabletteAusgeben(kammer, true);
+    servoAus(kammer);
   } else if (klein.startsWith("schwelle")) {
     MIC_SCHWELLE = constrain((int)klein.substring(8).toInt(), 1, 4095);
     Serial.printf("Schwelle jetzt %d. Damit sie bleibt: oben bei MIC_SCHWELLE eintragen.\n", MIC_SCHWELLE);
