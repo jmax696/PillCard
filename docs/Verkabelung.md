@@ -34,9 +34,7 @@ Pinbelegung wie in [`include/Hardware.h`](../include/Hardware.h). Wer umsteckt, 
 | **Mikrofon (analoges Modul)** | S (Signal) | IO34 | liegt unter allen Kammern, ersetzt die Lichtschranken (Sketch `PillCard_Demo`) |
 | | V | **3V3** | nicht 5V, sonst kann S bis zu 5V an IO34 legen |
 | | G | GND-Schiene | |
-| **Raspberry Pi (später)** | GPIO15 / RXD (Pin 10) | IO2 (TX) | Aufträge per UART, 115200 Baud, beide 3.3V |
-| | GPIO14 / TXD (Pin 8) | IO39 (RX) | |
-| | GND (Pin 6) | GND-Schiene | |
+| **Raspberry Pi (später)** | USB-Buchse | USB-Anschluss des ESP32 | ein USB-Kabel für Strom und Aufträge, Alternative mit 3 Kabeln siehe unten |
 | ~~Lichtschranke 1 / 2 / 3~~ | OUT | ~~IO34~~ / IO35 / IO36 (VP) | nicht mehr geplant, IO34 hat jetzt das Mikrofon |
 | **Kupferband Schale** | Streifen A / B | IO13 / GND | interner Pull-up |
 | **ESP32** | GND | GND-Schiene | gemeinsame Masse, Pflicht |
@@ -66,23 +64,45 @@ ist das Ende, das am weitesten von den USB-Buchsen entfernt ist, ungerade Pins l
 | | GND | GND (Pin 20) | |
 | | RST | GPIO25 (Pin 22) | Voreinstellung der Python-Bibliothek `mfrc522` |
 | | 3.3V | **3V3 (Pin 17)** | nie an 5V, die Pi-Pins vertragen keine 5V |
-| **ESP32** | IO39 (RX) | GPIO14 / TXD (Pin 8) | über Kreuz: TX an RX |
-| | IO2 (TX) | GPIO15 / RXD (Pin 10) | |
-| | GND | GND (Pin 6) | Pflicht, sonst kommen nur falsche Zeichen an |
+| **ESP32** | USB-Anschluss (zum Programmieren) | USB-Buchse | Strom und Aufträge über ein Kabel, 115200 Baud |
 | **Lautsprecher (später)** | USB | USB-Buchse | keine GPIO-Pins |
 
-Strom: Der Pi bekommt sein eigenes Netzteil (Pi 4: USB-C 5V/3A, Pi 5: USB-C 5V/5A). Kein
-5V-Kabel zum ESP32 oder zum Elegoo-Netzteilmodul, nur GND ist gemeinsam.
+Strom: Der Pi bekommt sein eigenes Netzteil (Pi 4: USB-C 5V/3A, Pi 5: USB-C 5V/5A) und versorgt
+den ESP32 über das USB-Kabel mit. Die Servos bleiben am Elegoo-Netzteilmodul. Die 5V-Pins des Pi
+(Pin 2 und 4) nicht mit dem ESP32 oder dem Netzteilmodul verbinden. GND ist über das USB-Kabel
+automatisch gemeinsam.
 
 Einrichten auf dem Pi:
 
 1. `sudo raspi-config` → Interface Options → **SPI** → Ja.
-2. `sudo raspi-config` → Interface Options → **Serial Port** → Login-Shell über seriell: **Nein**,
-   serielle Hardware: **Ja**. Neu starten.
-3. Prüfen: `ls /dev/spidev0.0 /dev/serial0` muss beide Dateien zeigen.
-4. Pi 5: zusätzlich `rpi-lgpio` installieren, weil `RPi.GPIO` (von `mfrc522` benutzt) dort nicht läuft.
+2. ESP32 einstecken und prüfen: `ls /dev/spidev0.0 /dev/ttyUSB0` muss beide Dateien zeigen.
+   Der Name `ttyUSB0` kann sich ändern; fest bleibt der Pfad unter `ls /dev/serial/by-id/`.
+3. Pi 5: zusätzlich `rpi-lgpio` installieren, weil `RPi.GPIO` (von `mfrc522` benutzt) dort nicht läuft.
 
-Im Sketch `PillCard_Demo` danach `RFID_AUF_ESP = false` und `PI_VERBUNDEN = true` setzen.
+Im Sketch `PillCard_Demo` danach `RFID_AUF_ESP = false` setzen. `PI_VERBUNDEN` bleibt `false`,
+der Sketch liest Aufträge schon über USB.
+
+Worauf das Pi-Programm achten muss:
+
+- Beim Öffnen der USB-Verbindung startet der ESP32 neu. Erst auf die Zeile `BEREIT` warten,
+  dann Aufträge schicken.
+- Über USB kommen auch Hilfstexte für den Seriellen Monitor. Nur Zeilen auswerten, die mit
+  `OK`, `TABLETTE`, `FERTIG`, `FEHLER` oder `BEREIT` anfangen.
+
+### Alternative: drei Kabel statt USB
+
+Nur nötig, wenn der USB-Anschluss am Laptop bleiben soll (z. B. zum Mitlesen beim Testen). Der
+ESP32 braucht dann eigenen Strom über USB.
+
+| ESP32 | Raspberry Pi | Hinweis |
+|---|---|---|
+| IO39 (RX) | GPIO14 / TXD (Pin 8) | über Kreuz: TX an RX |
+| IO2 (TX) | GPIO15 / RXD (Pin 10) | |
+| GND | GND (Pin 6) | Pflicht, sonst kommen nur falsche Zeichen an |
+
+Beide Seiten arbeiten mit 3.3V, ihr braucht keinen Pegelwandler. Auf dem Pi zusätzlich
+`sudo raspi-config` → Interface Options → **Serial Port** → Login-Shell: **Nein**, Hardware: **Ja**;
+die Schnittstelle heißt dann `/dev/serial0`. Im Sketch `PI_VERBUNDEN = true` setzen.
 
 ## RFID-Leser: I²C-Variante (nur für 4-Pin-Module)
 

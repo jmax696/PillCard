@@ -29,7 +29,8 @@
 //   Servos:  Signal Kammer 1/2/3 -> IO25/IO26/IO27, rot->5V-Schiene, braun->GND-Schiene
 //   LEDs:    grün->IO16, rot->IO17 (je über 100 Ohm)
 //   Mikrofon (analoges Modul): S->IO34, V->3V3 (NICHT 5V, sonst bis zu 5V am Pin!), G->GND
-//   Pi (später): ESP IO2 (TX) -> Pi GPIO15/RXD, ESP IO39 (RX) <- Pi GPIO14/TXD, GND <-> GND
+//   Pi (später): USB-Kabel vom ESP32 in eine USB-Buchse des Pi, sonst nichts.
+//     Alternative mit 3 Kabeln: ESP IO2 (TX) -> Pi GPIO15/RXD, ESP IO39 (RX) <- Pi GPIO14/TXD, GND <-> GND
 //   GND des ESP32 muss an die GND-Schiene!
 #include <SPI.h>
 #include <MFRC522.h>
@@ -39,7 +40,7 @@
 // ===== Einstellungen =====
 
 const bool RFID_AUF_ESP = true;   // false, sobald der Pi die Karten liest
-const bool PI_VERBUNDEN = false;  // true, sobald das Kabel zum Pi steckt
+const bool PI_VERBUNDEN = false;  // nur bei der 3-Kabel-Alternative true; über USB bleibt es false
 
 // Pläne für die Demo. Später kennt nur noch der Pi diese Zuordnung.
 // UID unbekannt? Karte hinhalten, die UID steht dann im Seriellen Monitor. Hier eintragen.

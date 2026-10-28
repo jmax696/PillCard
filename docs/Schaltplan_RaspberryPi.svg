@@ -1,13 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 860" width="1200" height="860">
-<rect width="1200" height="860" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 870" width="1200" height="870">
+<rect width="1200" height="870" fill="#ffffff"/>
 <text x="40" y="42" font-family="Helvetica, Arial, sans-serif" font-size="24" text-anchor="start" font-weight="bold" fill="#1f2328" >PillCard – Verdrahtung mit Raspberry Pi</text>
 <text x="40" y="66" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#57606a" >RFID-Leser und Verbindung zum ESP32 · gleiche Stiftleiste bei Pi 3, 4 und 5</text>
-<rect x="40" y="92" width="230" height="548" rx="8" fill="#eef4ff" stroke="#0969da" stroke-width="1.8"/>
+<rect x="40" y="92" width="230" height="520" rx="8" fill="#eef4ff" stroke="#0969da" stroke-width="1.8"/>
 <text x="155" y="114" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#1f2328" >Raspberry Pi</text>
 <text x="155" y="132" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >eigenes Netzteil</text>
-<text x="155" y="395" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >kein Kabel von hier</text>
-<text x="155" y="411" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >an 5V vom ESP32 oder</text>
-<text x="155" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#cf222e" >vom Netzteilmodul!</text>
+<text x="155" y="395" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >5V-Pins (2, 4) nicht mit</text>
+<text x="155" y="411" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >ESP32 oder Netzteil-</text>
+<text x="155" y="427" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#cf222e" >modul verbinden!</text>
 <rect x="560" y="112" width="300" height="275" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.8"/>
 <text x="710" y="136" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#1f2328" >RFID-RC522</text>
 <text x="710" y="154" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >blaues Board, SPI · Reihenfolge wie am Board</text>
@@ -34,26 +34,18 @@
 <rect x="556" y="350" width="9" height="10" fill="#8c959f"/><text x="572" y="360" font-family="Helvetica, Arial, sans-serif" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2328" >3.3V</text>
 <line x1="274" y1="355" x2="556" y2="355" stroke="#e36209" stroke-width="2.5" stroke-linecap="round"/>
 <text x="420" y="348" font-family="Helvetica, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="bold" fill="#cf222e" >3.3V, nicht 5V!</text>
-<rect x="560" y="425" width="300" height="125" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.8"/>
+<rect x="560" y="425" width="300" height="80" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.8"/>
 <text x="710" y="447" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#1f2328" >ESP32 (Keyestudio)</text>
-<text x="710" y="465" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >UART, 115200 Baud</text>
-<rect x="262" y="484" width="12" height="12" fill="#d0a215" stroke="#7d5c00"/><text x="254" y="495" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="end" font-weight="bold" fill="#1f2328" >GPIO14 TXD · Pin 8</text>
-<rect x="556" y="485" width="9" height="10" fill="#8c959f"/><text x="572" y="495" font-family="Helvetica, Arial, sans-serif" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2328" >IO39 (RX)</text>
-<line x1="274" y1="490" x2="540" y2="490" stroke="#9a6700" stroke-width="2.5" stroke-linecap="round"/>
-<polygon points="541,484 553,490 541,496" fill="#9a6700"/>
-<rect x="262" y="508" width="12" height="12" fill="#d0a215" stroke="#7d5c00"/><text x="254" y="519" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="end" font-weight="bold" fill="#1f2328" >GPIO15 RXD · Pin 10</text>
-<rect x="556" y="509" width="9" height="10" fill="#8c959f"/><text x="572" y="519" font-family="Helvetica, Arial, sans-serif" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2328" >IO2 (TX)</text>
-<line x1="290" y1="514" x2="556" y2="514" stroke="#0969da" stroke-width="2.5" stroke-linecap="round"/>
-<polygon points="289,508 277,514 289,520" fill="#0969da"/>
-<rect x="262" y="532" width="12" height="12" fill="#d0a215" stroke="#7d5c00"/><text x="254" y="543" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="end" font-weight="bold" fill="#1f2328" >GND · Pin 6</text>
-<rect x="556" y="533" width="9" height="10" fill="#8c959f"/><text x="572" y="543" font-family="Helvetica, Arial, sans-serif" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2328" >GND</text>
-<line x1="274" y1="538" x2="556" y2="538" stroke="#24292f" stroke-width="2.5" stroke-linecap="round"/>
-<text x="420" y="482" font-family="Helvetica, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="bold" fill="#57606a" >über Kreuz: TX → RX</text>
-<rect x="560" y="575" width="300" height="55" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.8" stroke-dasharray="7 5"/>
-<text x="710" y="597" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#1f2328" >USB-Lautsprecher (später)</text>
-<text x="710" y="615" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >in eine USB-Buchse, keine GPIO-Pins</text>
-<text x="254" y="607" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="end" font-weight="bold" fill="#1f2328" >USB</text>
-<line x1="270" y1="602" x2="560" y2="602" stroke="#57606a" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="710" y="465" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >Strom + Aufträge, 115200 Baud</text>
+<rect x="262" y="481" width="12" height="12" fill="#d0a215" stroke="#7d5c00"/><text x="254" y="492" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="end" font-weight="bold" fill="#1f2328" >USB-Buchse</text>
+<rect x="556" y="482" width="9" height="10" fill="#8c959f"/><text x="572" y="492" font-family="Helvetica, Arial, sans-serif" font-size="12.5" text-anchor="start" font-weight="normal" fill="#1f2328" >USB-Anschluss</text>
+<line x1="274" y1="487" x2="556" y2="487" stroke="#57606a" stroke-width="5" stroke-linecap="round"/>
+<text x="420" y="478" font-family="Helvetica, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="bold" fill="#57606a" >USB-Kabel</text>
+<rect x="560" y="535" width="300" height="55" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="1.8" stroke-dasharray="7 5"/>
+<text x="710" y="557" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#1f2328" >USB-Lautsprecher (später)</text>
+<text x="710" y="575" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >keine GPIO-Pins</text>
+<rect x="262" y="556" width="12" height="12" fill="#d0a215" stroke="#7d5c00"/><text x="254" y="567" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="end" font-weight="bold" fill="#1f2328" >USB-Buchse</text>
+<line x1="274" y1="562" x2="560" y2="562" stroke="#57606a" stroke-width="2" stroke-dasharray="6 5"/>
 <text x="1055" y="114" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="bold" fill="#1f2328" >Stiftleiste von oben</text>
 <text x="1055" y="132" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="normal" fill="#57606a" >Pin 1: Ende weit weg von USB</text>
 <rect x="1027" y="146" width="56" height="466" rx="4" fill="#24292f"/>
@@ -67,16 +59,16 @@
 <text x="1088" y="187" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#8c959f" >4 · 5V</text>
 <circle cx="1040" cy="206" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
 <text x="1022" y="210" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="end" font-weight="normal" fill="#8c959f" >GPIO3 · 5</text>
-<circle cx="1070" cy="206" r="7" fill="#ffffff" stroke="#ffffff" stroke-width="1.5"/>
-<text x="1088" y="210" font-family="Helvetica, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="bold" fill="#1f2328" >6 · GND</text>
+<circle cx="1070" cy="206" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
+<text x="1088" y="210" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#8c959f" >6 · GND</text>
 <circle cx="1040" cy="229" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
 <text x="1022" y="233" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="end" font-weight="normal" fill="#8c959f" >GPIO4 · 7</text>
-<circle cx="1070" cy="229" r="7" fill="#9a6700" stroke="#ffffff" stroke-width="1.5"/>
-<text x="1088" y="233" font-family="Helvetica, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="bold" fill="#1f2328" >8 · GPIO14 TXD</text>
+<circle cx="1070" cy="229" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
+<text x="1088" y="233" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#8c959f" >8 · GPIO14 TXD</text>
 <circle cx="1040" cy="252" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
 <text x="1022" y="256" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="end" font-weight="normal" fill="#8c959f" >GND · 9</text>
-<circle cx="1070" cy="252" r="7" fill="#0969da" stroke="#ffffff" stroke-width="1.5"/>
-<text x="1088" y="256" font-family="Helvetica, Arial, sans-serif" font-size="11.5" text-anchor="start" font-weight="bold" fill="#1f2328" >10 · GPIO15 RXD</text>
+<circle cx="1070" cy="252" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
+<text x="1088" y="256" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#8c959f" >10 · GPIO15 RXD</text>
 <circle cx="1040" cy="275" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
 <text x="1022" y="279" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="end" font-weight="normal" fill="#8c959f" >GPIO17 · 11</text>
 <circle cx="1070" cy="275" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
@@ -138,12 +130,13 @@
 <circle cx="1070" cy="597" r="7" fill="#8c959f" stroke="#ffffff" stroke-width="1.5"/>
 <text x="1088" y="601" font-family="Helvetica, Arial, sans-serif" font-size="10.5" text-anchor="start" font-weight="normal" fill="#8c959f" >40 · GPIO21</text>
 <text x="1055" y="636" font-family="Helvetica, Arial, sans-serif" font-size="11.5" text-anchor="middle" font-weight="normal" fill="#57606a" >farbig = belegt, Farbe wie das Kabel</text>
-<rect x="40" y="665" width="1120" height="165" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
-<text x="60" y="691" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="bold" fill="#1f2328" >Hinweise</text>
-<text x="60" y="715" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• SPI einschalten: sudo raspi-config → Interface Options → SPI → Ja. Danach gibt es /dev/spidev0.0.</text>
-<text x="60" y="734" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• UART einschalten: raspi-config → Interface Options → Serial Port → Login-Shell „Nein“, Hardware „Ja“. Danach /dev/serial0.</text>
-<text x="60" y="753" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• RC522 nur an 3.3V (Pin 1 oder 17). Die Pi-Pins vertragen keine 5V, auch nicht kurz.</text>
-<text x="60" y="772" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• Zum ESP32 nur drei Kabel: TX an RX, RX an TX, GND an GND. Beide 3.3V, kein Pegelwandler, kein 5V-Kabel dazwischen.</text>
-<text x="60" y="791" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• Strom: eigenes USB-C-Netzteil (Pi 4: 5V/3A, Pi 5: 5V/5A). Nie vom Elegoo-Netzteilmodul oder vom ESP32 versorgen.</text>
-<text x="60" y="810" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• RST an Pin 22 ist auch die Voreinstellung der Python-Bibliothek mfrc522. Pi 5: zusätzlich das Paket rpi-lgpio installieren.</text>
+<rect x="40" y="660" width="1120" height="184" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="60" y="686" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="bold" fill="#1f2328" >Hinweise</text>
+<text x="60" y="710" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• SPI einschalten: sudo raspi-config → Interface Options → SPI → Ja. Danach gibt es /dev/spidev0.0.</text>
+<text x="60" y="729" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• RC522 nur an 3.3V (Pin 1 oder 17). Die Pi-Pins vertragen keine 5V, auch nicht kurz.</text>
+<text x="60" y="748" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• ESP32: USB-Kabel vom Programmier-Anschluss in eine USB-Buchse des Pi. Er heißt dann /dev/ttyUSB0 (fester Name: /dev/serial/by-id/…).</text>
+<text x="60" y="767" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• Beim Öffnen der Verbindung startet der ESP32 neu: erst auf BEREIT warten. Nur Zeilen mit OK, TABLETTE, FERTIG, FEHLER, BEREIT auswerten.</text>
+<text x="60" y="786" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• Alternative ohne USB: Pi Pin 8 (TXD) → ESP IO39, ESP IO2 → Pi Pin 10 (RXD), GND Pin 6. Dann Serial Port in raspi-config an, PI_VERBUNDEN = true.</text>
+<text x="60" y="805" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• Strom: eigenes Netzteil für den Pi (Pi 4: USB-C 5V/3A, Pi 5: 5V/5A). Er versorgt den ESP32 über USB mit, die Servos bleiben am Elegoo-Modul.</text>
+<text x="60" y="824" font-family="Helvetica, Arial, sans-serif" font-size="13" text-anchor="start" font-weight="normal" fill="#1f2328" >• RST an Pin 22 ist auch die Voreinstellung der Python-Bibliothek mfrc522. Pi 5: zusätzlich das Paket rpi-lgpio installieren.</text>
 </svg>
