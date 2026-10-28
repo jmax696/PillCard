@@ -1,0 +1,57 @@
+{% extends "admin_base.html" %}
+{% block titel %}Übersicht – PillCard{% endblock %}
+{% block inhalt %}
+<div class="zeilenkopf">
+  <h1>Nutzer</h1>
+  <a class="knopf gross" href="{{ url_for('nutzer_neu') }}">＋ Neuen Nutzer anlernen</a>
+</div>
+
+<section class="karte flach">
+  <table class="tabelle">
+    <thead><tr><th>Name</th><th>Karte</th><th>Plan</th><th>Heute</th><th></th></tr></thead>
+    <tbody>
+    {% for n in nutzer %}
+      <tr>
+        <td><strong>{{ n.name }}</strong><br><small class="leise">{{ n.benutzername or '–' }}
+          {% if not n.hat_passwort %} · <span class="marke-fehler">kein Passwort</span>{% endif %}</small></td>
+        <td><code>{{ n.uid }}</code></td>
+        <td>{{ n.plan }}</td>
+        <td>{% if n.genommen_um %}<span class="marke-ok">✓ {{ n.genommen_um }}</span>{% else %}<span class="leise">offen</span>{% endif %}</td>
+        <td class="rechts"><a class="knopf klein" href="{{ url_for('nutzer_bearbeiten', nutzer_id=n.id) }}">Bearbeiten</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">Noch keine Nutzer. Legen Sie mit dem Knopf oben den ersten an.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="zeilenkopf">
+  <h2>Vorrat</h2>
+  <a class="knopf klein" href="{{ url_for('admin_kammern') }}">Kammern bearbeiten</a>
+</div>
+<div class="kacheln">
+  {% for k in vorrat %}
+  <div class="kachel {{ 'knapp' if k.knapp }}">
+    <span class="leise">Kammer {{ k.nr }}</span>
+    <strong>{{ k.medikament }}</strong>
+    <span class="wert">{{ k.vorrat }}</span>
+    <span class="leise">
+      {% if k.bedarf %}{{ k.bedarf }} pro Tag · reicht {{ k.reicht_tage }} {{ 'Tag' if k.reicht_tage == 1 else 'Tage' }}
+      {% else %}von niemandem genutzt{% endif %}
+    </span>
+    {% if k.knapp %}<span class="marke-fehler">bald leer</span>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<section class="karte flach demo">
+  <h2>Demo</h2>
+  <p class="leise">Löscht die heutigen Ausgaben, danach dürfen alle heute noch einmal.</p>
+  <form method="post" action="{{ url_for('admin_reset') }}"
+        onsubmit="return confirm('Alle heutigen Ausgaben löschen?')">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="zweit">Heute zurücksetzen</button>
+  </form>
+</section>
+{% endblock %}

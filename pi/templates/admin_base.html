@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block nav %}
+  {% if ist_admin %}
+    <a href="{{ url_for('admin') }}">Übersicht</a>
+    <a href="{{ url_for('admin_kammern') }}">Kammern</a>
+    <form method="post" action="{{ url_for('admin_logout') }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="link">Abmelden</button>
+    </form>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block titel %}Heute – PillCard{% endblock %}
+{% block inhalt %}
+<h1>Guten Tag, {{ nutzer.name }}</h1>
+
+{% for k in knapp %}
+<div class="meldung warnung" role="alert">
+  <strong>Vorrat geht zu Ende:</strong> {{ k.medikament }} – noch {{ k.vorrat }} Tabletten
+  {%- if k.reicht_tage is not none %}, reicht etwa {{ k.reicht_tage }} {{ 'Tag' if k.reicht_tage == 1 else 'Tage' }}{% endif %}.
+  Bitte rechtzeitig nachbestellen.
+</div>
+{% endfor %}
+
+<section class="karte">
+  {% if genommen_um %}
+    <p class="status ok">✓ Heute um {{ genommen_um }} Uhr ausgegeben</p>
+    <ul class="liste">
+      {% for a in heute_ausgaben %}
+      <li>
+        {{ a.medikament }}
+        <span class="rechts">
+          {% if a.erhalten is none %}<span class="marke-fehler">Fehler am Gerät</span>
+          {% elif a.erhalten < a.bestellt %}{{ a.erhalten }} von {{ a.bestellt }}
+          {% else %}{{ a.erhalten }}×{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="leise">Die nächste Ausgabe gibt es morgen.</p>
+  {% else %}
+    <p class="status offen">Heute noch nicht genommen</p>
+    <p class="leise">Halten Sie Ihre Karte an das Gerät. Sie bekommen:</p>
+    <ul class="liste">
+      {% for m in meds %}
+      <li>{{ m.medikament }} <span class="rechts">{{ m.heute }}×</span></li>
+      {% else %}
+      <li>Heute steht nichts im Plan.</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
+
+{% if anpassbar %}
+<section class="karte">
+  <h2>Dosis nach Tagesform anpassen</h2>
+  <form method="post" action="{{ url_for('anpassen') }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <fieldset class="tagwahl">
+      <legend>Für welchen Tag?</legend>
+      <label class="wahl"><input type="radio" name="tag" value="heute"
+        {% if genommen_um %}disabled{% else %}checked{% endif %}> Heute</label>
+      <label class="wahl"><input type="radio" name="tag" value="morgen"
+        {% if genommen_um %}checked{% endif %}> Morgen</label>
+    </fieldset>
+    {% for m in anpassbar %}
+    {% set aktuell = m.morgen if genommen_um else m.heute %}
+    <div class="zaehler" data-max="{{ m.grenze }}">
+      <span class="name">{{ m.medikament }}<small>normal {{ m.plan }}, höchstens {{ m.grenze }}</small></span>
+      <button type="button" class="rund" data-schritt="-1" aria-label="weniger">−</button>
+      <input name="k{{ m.nr }}" type="number" min="0" max="{{ m.grenze }}" value="{{ aktuell }}"
+             data-heute="{{ m.heute }}" data-morgen="{{ m.morgen }}" inputmode="numeric">
+      <button type="button" class="rund" data-schritt="1" aria-label="mehr">+</button>
+    </div>
+    {% endfor %}
+    <button class="gross">Speichern</button>
+  </form>
+</section>
+<script>
+  // Plus/Minus-Knöpfe und beim Tageswechsel den passenden Wert anzeigen
+  document.querySelectorAll(".zaehler").forEach(function (z) {
+    var feld = z.querySelector("input"), max = +z.dataset.max;
+    z.querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        feld.value = Math.max(0, Math.min(max, (+feld.value || 0) + (+b.dataset.schritt)));
+      });
+    });
+  });
+  document.querySelectorAll("input[name=tag]").forEach(function (r) {
+    r.addEventListener("change", function () {
+      document.querySelectorAll(".zaehler input").forEach(function (f) { f.value = f.dataset[r.value]; });
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}

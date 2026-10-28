@@ -70,6 +70,8 @@ Umgebung wählen, dann hochladen und den Seriellen Monitor öffnen (9600 Baud).
 - `lib/MFRC522_I2C/`: Bibliothek für den I²C-Leser, Kopie von `kkloesener/MFRC522_I2C`
   (Public Domain) mit einer Korrektur, damit sie auf dem Uno kompiliert
 - `docs/Verkabelung.md`: Verkabelung, Stromversorgung, Testreihenfolge
+- `pi/`: Programm für den Raspberry Pi (RFID, Plan, Aufträge an den ESP32) und die lokale Website,
+  siehe `docs/Datenbank.md` und `docs/Website.md`
 
 ### Kartenformat
 

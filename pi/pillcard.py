@@ -25,7 +25,8 @@ import datenbank
 ORDNER = Path(__file__).resolve().parent
 UNBEKANNT = ORDNER / "unbekannte_uids.txt"
 
-AUFTRAG_TIMEOUT = 60   # s, so lange darf der ESP32 für einen Auftrag brauchen
+AUFTRAG_GRUND = 20     # s Grundzeit für einen Auftrag ...
+PRO_TABLETTE = 4       # ... plus so viel pro Tablette (Servo, Hinhören, zweiter Versuch)
 KARTE_SPERRE = 3       # s, so lange zählt dieselbe Karte nicht noch einmal
 ANTWORTEN = ("BEREIT", "OK", "TABLETTE", "FERTIG", "FEHLER")
 
@@ -64,7 +65,7 @@ class Esp:
         """Schickt einen Auftrag und wartet auf FERTIG. Rückgabe: {Kammer: ausgegeben} oder None."""
         teile = [f"K{k}={n}" for k, n in sorted(kammern.items()) if n > 0]
         self.senden(f"AUFTRAG {nummer} " + " ".join(teile))
-        ende = time.time() + AUFTRAG_TIMEOUT
+        ende = time.time() + AUFTRAG_GRUND + PRO_TABLETTE * sum(kammern.values())
         while time.time() < ende:
             zeile = self.zeile_lesen().split()
             if not zeile:
@@ -90,7 +91,15 @@ def uid_lesen(leser):
 
 
 def karte_bearbeiten(uid, esp, db):
-    """Entscheidet für eine Karte: unbekannt, heute schon genommen oder Ausgabe."""
+    """Entscheidet für eine Karte: Anlernen, unbekannt, heute schon genommen oder Ausgabe."""
+    scan = datenbank.scan_offen(db)
+    if scan:
+        # Die Website wartet auf eine Karte zum Anlernen: UID melden, nichts ausgeben
+        datenbank.scan_erledigen(db, scan["id"], uid)
+        print(f"[{jetzt():%H:%M:%S}] Karte {uid} für die Website angelernt")
+        esp.senden("MELDUNG Karte erkannt")
+        return
+
     nutzer = datenbank.nutzer_zu_uid(db, uid)
     print(f"[{jetzt():%H:%M:%S}] Karte {uid}" + (f" = {nutzer['name']}" if nutzer else " (unbekannt)"))
 

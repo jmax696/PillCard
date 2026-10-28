@@ -1,0 +1,144 @@
+{% extends "admin_base.html" %}
+{% block titel %}{{ 'Neuer Nutzer' if neu else werte.name }} – PillCard{% endblock %}
+{% block inhalt %}
+<h1>{{ 'Neuen Nutzer anlernen' if neu else werte.name + ' bearbeiten' }}</h1>
+
+<form method="post" id="nutzerformular">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+
+  <section class="karte">
+    <h2>{{ '1. ' if neu }}Karte</h2>
+    <div id="scan" class="scan {{ 'wartet' if neu and not werte.uid }}">
+      <div class="scan-text">
+        <strong id="scan-titel">{{ 'Karte an den Leser halten …' if neu and not werte.uid else 'Karte' }}</strong>
+        <span id="scan-info" class="leise">
+          {%- if neu and not werte.uid %}Der Leser wartet bis zu 2 Minuten auf die neue Karte.{% endif -%}
+        </span>
+      </div>
+      <button type="button" class="zweit" id="scan-knopf">{{ 'Neu scannen' if werte.uid or not neu else 'Erneut scannen' }}</button>
+    </div>
+    <label>UID
+      <input name="uid" id="uid" value="{{ werte.uid }}" placeholder="z. B. 3D AB 09 01" required
+             autocomplete="off" spellcheck="false">
+    </label>
+  </section>
+
+  <section class="karte">
+    <h2>{{ '2. ' if neu }}Person</h2>
+    <div class="spalten">
+      <label>Name
+        <input name="name" id="name" value="{{ werte.name }}" required>
+      </label>
+      <label>Benutzername
+        <input name="benutzername" id="benutzername" value="{{ werte.benutzername }}" required
+               autocapitalize="none" pattern="[a-z0-9._\-]{2,30}">
+      </label>
+      <label>Passwort {% if not neu %}<small class="leise">(leer lassen = unverändert)</small>{% endif %}
+        <input name="passwort" type="password" autocomplete="new-password" minlength="4">
+      </label>
+      <label>Wieder ausgeben ab
+        <input name="wieder_um" type="time" value="{{ werte.wieder_um }}">
+      </label>
+    </div>
+  </section>
+
+  <section class="karte">
+    <h2>{{ '3. ' if neu }}Dosierung pro Tag</h2>
+    <p class="leise">Tabletten pro Ausgabe, 0 bis {{ max_pro_kammer }} je Kammer.</p>
+    {% for k in kammern %}
+    <div class="zaehler" data-max="{{ max_pro_kammer }}">
+      <span class="name">Kammer {{ k.nr }}: {{ k.medikament }}
+        <small>{% if k.anpassbar %}Nutzer darf selbst 0 bis {{ k.max_pro_tag }} wählen
+          {%- else %}feste Menge, Nutzer kann nichts ändern{% endif %}</small></span>
+      <button type="button" class="rund" data-schritt="-1" aria-label="weniger">−</button>
+      <input name="k{{ k.nr }}" type="number" min="0" max="{{ max_pro_kammer }}" value="{{ plan.get(k.nr, 0) }}">
+      <button type="button" class="rund" data-schritt="1" aria-label="mehr">+</button>
+    </div>
+    {% endfor %}
+  </section>
+
+  <div class="aktionen">
+    <button class="gross">{{ 'Nutzer anlegen' if neu else 'Speichern' }}</button>
+    <a class="knopf zweit" href="{{ url_for('admin') }}">Abbrechen</a>
+  </div>
+</form>
+
+{% if not neu %}
+<form method="post" action="{{ url_for('nutzer_loeschen', nutzer_id=werte.id) }}" class="gefahr"
+      onsubmit="return confirm('{{ werte.name }} mit Plan und allen bisherigen Ausgaben löschen?')">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button class="loeschen">Nutzer löschen</button>
+</form>
+{% endif %}
+
+<script>
+(function () {
+  var csrf = "{{ csrf }}", nutzerId = {{ werte.id or 'null' }};
+  var scanStart = "{{ url_for('scan_starten') }}", scanBasis = "{{ url_for('scan_abfragen', scan_id=0) }}".slice(0, -1);
+
+  document.querySelectorAll(".zaehler").forEach(function (z) {
+    var feld = z.querySelector("input"), max = +z.dataset.max;
+    z.querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        feld.value = Math.max(0, Math.min(max, (+feld.value || 0) + (+b.dataset.schritt)));
+      });
+    });
+  });
+
+  // Benutzername aus dem Namen vorschlagen, solange er nicht selbst geändert wurde
+  var name = document.getElementById("name"), bn = document.getElementById("benutzername");
+  var bnSelbst = bn.value !== "";
+  bn.addEventListener("input", function () { bnSelbst = true; });
+  name.addEventListener("input", function () {
+    if (bnSelbst) return;
+    bn.value = name.value.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue")
+      .replace(/ß/g, "ss").replace(/[^a-z0-9._-]+/g, ".").replace(/^\.+|\.+$/g, "").slice(0, 30);
+  });
+
+  // Scannen: Auftrag anlegen, PillCard trägt die nächste Karte ein, wir fragen jede Sekunde nach
+  var box = document.getElementById("scan"), titel = document.getElementById("scan-titel"),
+      info = document.getElementById("scan-info"), knopf = document.getElementById("scan-knopf"),
+      uid = document.getElementById("uid"), timer = null;
+
+  function zustand(art, t, i) {
+    box.className = "scan " + art; titel.textContent = t; info.textContent = i || "";
+  }
+
+  function scannen() {
+    clearTimeout(timer);
+    zustand("wartet", "Karte an den Leser halten …", "Der Leser wartet bis zu 2 Minuten auf die neue Karte.");
+    var daten = new FormData(); daten.append("csrf", csrf);
+    fetch(scanStart, { method: "POST", body: daten, credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (a) { nachfragen(a.id); })
+      .catch(function () { zustand("fehler", "Scan nicht möglich", "Die Website ist nicht erreichbar."); });
+  }
+
+  function nachfragen(id) {
+    fetch(scanBasis + id, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (e) {
+        if (e.uid) {
+          uid.value = e.uid;
+          if (e.vergeben && e.vergeben_id !== nutzerId) {
+            zustand("fehler", "Karte " + e.uid + " gehört schon " + e.vergeben,
+                    "Bitte eine andere Karte nehmen oder " + e.vergeben + " zuerst ändern.");
+          } else {
+            zustand("ok", "✓ Karte erkannt: " + e.uid, "");
+            if (!name.value) name.focus();
+          }
+        } else if (e.abgelaufen) {
+          zustand("fehler", "Keine Karte erkannt",
+                  "Läuft PillCard auf dem Pi? Sonst die UID von Hand eintragen.");
+        } else {
+          timer = setTimeout(function () { nachfragen(id); }, 1000);
+        }
+      })
+      .catch(function () { timer = setTimeout(function () { nachfragen(id); }, 2000); });
+  }
+
+  knopf.addEventListener("click", scannen);
+  {% if neu and not werte.uid %}scannen();{% endif %}
+})();
+</script>
+{% endblock %}

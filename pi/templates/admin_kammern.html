@@ -1,0 +1,44 @@
+{% extends "admin_base.html" %}
+{% block titel %}Kammern – PillCard{% endblock %}
+{% block inhalt %}
+<h1>Kammern und Vorrat</h1>
+<form method="post">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% for k in vorrat %}
+  <section class="karte {{ 'knapp' if k.knapp }}">
+    <div class="zeilenkopf">
+      <h2>Kammer {{ k.nr }}</h2>
+      {% if k.knapp %}<span class="marke-fehler">bald leer</span>{% endif %}
+    </div>
+    <div class="spalten">
+      <label>Medikament
+        <input name="medikament{{ k.nr }}" value="{{ k.medikament }}" required>
+      </label>
+      <label>Selbst anpassen bis
+        <input name="max{{ k.nr }}" type="number" min="1" max="{{ max_pro_kammer }}" value="{{ k.max_pro_tag }}">
+      </label>
+      <label>Vorrat (Tabletten)
+        <input name="vorrat{{ k.nr }}" type="number" min="0" value="{{ k.vorrat }}">
+      </label>
+      <label>Nachgefüllt (+)
+        <input name="nachfuellen{{ k.nr }}" type="number" min="0" value="0">
+      </label>
+      <label>Warnen ab
+        <input name="warnen{{ k.nr }}" type="number" min="0" value="{{ k.warnen_ab }}">
+      </label>
+      <label class="haken">
+        <input type="checkbox" name="anpassbar{{ k.nr }}" {% if k.anpassbar %}checked{% endif %}>
+        Nutzer dürfen die Menge selbst anpassen
+      </label>
+    </div>
+    <p class="leise">
+      {% if k.bedarf %}Alle Nutzer zusammen: {{ k.bedarf }} pro Tag – der Vorrat reicht etwa {{ k.reicht_tage }} Tage.
+      {% else %}Im Moment bekommt niemand etwas aus dieser Kammer.{% endif %}
+    </p>
+  </section>
+  {% endfor %}
+  <div class="aktionen">
+    <button class="gross">Speichern</button>
+  </div>
+</form>
+{% endblock %}

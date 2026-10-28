@@ -1,0 +1,193 @@
+/* PillCard – große Schrift, starke Kontraste, große Knöpfe (für ältere Nutzer gedacht) */
+:root {
+  --grund: #f4f1ec;
+  --flaeche: #ffffff;
+  --text: #1d1f21;
+  --leise: #5b6168;
+  --linie: #d9d4cc;
+  --haupt: #1f6f5c;
+  --haupt-dunkel: #155244;
+  --ok: #1a7f37;
+  --ok-hell: #dcf3e2;
+  --warn: #9a5b00;
+  --warn-hell: #fff1d6;
+  --fehler: #b42318;
+  --fehler-hell: #fde4e1;
+  --verpasst: #8c8f94;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 19px; }
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+/* Kopfzeile */
+.kopf {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem;
+  padding: .8rem 1rem; background: var(--flaeche); border-bottom: 1px solid var(--linie);
+}
+.marke { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.3rem;
+         color: var(--text); text-decoration: none; }
+.pille { width: 30px; height: 16px; border-radius: 8px;
+         background: linear-gradient(90deg, var(--haupt) 50%, #e8b04a 50%); }
+nav { display: flex; align-items: center; gap: .3rem 1.1rem; flex-wrap: wrap; }
+nav a, .link { color: var(--haupt-dunkel); font-weight: 600; text-decoration: none; font-size: 1rem; }
+nav a:hover, .link:hover { text-decoration: underline; }
+form.inline { display: inline; margin: 0; }
+button.link { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; font-weight: 600; }
+
+main { max-width: 860px; margin: 0 auto; padding: 1.2rem 16px 3rem; }
+h1 { font-size: 1.7rem; margin: .4rem 0 1rem; line-height: 1.25; }
+h2 { font-size: 1.25rem; margin: 0 0 .8rem; }
+.leise { color: var(--leise); }
+small { font-size: .82rem; }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem; white-space: nowrap; }
+.fuss { text-align: center; margin-top: 1.5rem; }
+.fuss a { color: var(--leise); }
+
+/* Karten und Meldungen */
+.karte { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius);
+         padding: 1.2rem 1.3rem; margin-bottom: 1.1rem; }
+.karte.schmal { max-width: 440px; margin: 2rem auto 0; }
+.karte.flach { padding: .4rem .6rem; }
+.karte.knapp { border-color: var(--warn); box-shadow: inset 4px 0 0 var(--warn); }
+.karte.demo { padding: 1rem 1.3rem; margin-top: 2rem; }
+
+.meldung { border-radius: var(--radius); padding: .9rem 1.1rem; margin-bottom: 1rem; font-weight: 500; }
+.meldung.ok { background: var(--ok-hell); color: #0f5323; }
+.meldung.fehler { background: var(--fehler-hell); color: #7d1a12; }
+.meldung.warnung { background: var(--warn-hell); color: #5f3800; border: 1px solid #f0c674; }
+
+.status { font-size: 1.35rem; font-weight: 700; margin: 0 0 .6rem; }
+.status.ok { color: var(--ok); }
+.status.offen { color: var(--warn); }
+
+.marke-ok, .marke-fehler { display: inline-block; border-radius: 99px; padding: .05rem .6rem;
+                           font-size: .82rem; font-weight: 600; white-space: nowrap; }
+.marke-ok { background: var(--ok-hell); color: var(--ok); }
+.marke-fehler { background: var(--fehler-hell); color: var(--fehler); }
+
+.liste { list-style: none; padding: 0; margin: 0 0 .6rem; }
+.liste li { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem 0;
+            border-bottom: 1px solid var(--linie); font-size: 1.1rem; }
+.liste li:last-child { border-bottom: 0; }
+.rechts { text-align: right; font-weight: 600; }
+
+/* Formulare */
+label { display: block; font-weight: 600; margin-bottom: .9rem; }
+input[type=text], input:not([type]), input[type=password], input[type=number], input[type=time] {
+  display: block; width: 100%; margin-top: .3rem; padding: .7rem .8rem; font: inherit; font-weight: 400;
+  border: 2px solid var(--linie); border-radius: 10px; background: #fff; color: var(--text);
+}
+input:focus { outline: 3px solid #9cd2c3; border-color: var(--haupt); }
+label.haken { display: flex; align-items: center; gap: .6rem; font-weight: 500; align-self: end; }
+label.haken input { width: 1.4rem; height: 1.4rem; accent-color: var(--haupt); }
+
+button, .knopf {
+  display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+  font: inherit; font-weight: 700; cursor: pointer; text-decoration: none;
+  border: 2px solid var(--haupt); background: var(--haupt); color: #fff;
+  border-radius: 12px; padding: .65rem 1.2rem;
+}
+button:hover, .knopf:hover { background: var(--haupt-dunkel); border-color: var(--haupt-dunkel); }
+button.gross, .knopf.gross { font-size: 1.1rem; padding: .85rem 1.5rem; }
+form > button.gross { width: 100%; margin-top: .4rem; }
+.knopf.klein { padding: .35rem .8rem; font-size: .9rem; }
+button.zweit, .knopf.zweit { background: #fff; color: var(--haupt-dunkel); }
+button.zweit:hover, .knopf.zweit:hover { background: #eef6f3; }
+button.loeschen { background: #fff; color: var(--fehler); border-color: var(--fehler); }
+button.loeschen:hover { background: var(--fehler-hell); }
+
+.spalten { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 1.2rem; }
+.aktionen { display: flex; gap: .8rem; flex-wrap: wrap; margin: 1rem 0; }
+.aktionen button { flex: 1 1 220px; }
+.gefahr { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--linie); }
+
+fieldset.tagwahl { border: 0; padding: 0; margin: 0 0 1rem; display: flex; gap: .6rem; flex-wrap: wrap; }
+fieldset.tagwahl legend { font-weight: 600; margin-bottom: .4rem; padding: 0; }
+label.wahl { display: flex; align-items: center; gap: .5rem; margin: 0; padding: .6rem 1.1rem;
+             border: 2px solid var(--linie); border-radius: 12px; cursor: pointer; }
+label.wahl:has(input:checked) { border-color: var(--haupt); background: #eef6f3; }
+label.wahl:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+label.wahl input { width: 1.2rem; height: 1.2rem; accent-color: var(--haupt); }
+
+/* Plus/Minus-Zähler */
+.zaehler { display: flex; align-items: center; gap: .6rem; padding: .7rem 0; border-bottom: 1px solid var(--linie); }
+.zaehler:last-of-type { border-bottom: 0; }
+.zaehler .name { flex: 1; font-weight: 600; font-size: 1.1rem; }
+.zaehler .name small { display: block; font-weight: 400; color: var(--leise); }
+.zaehler input { width: 4.2rem; margin: 0; text-align: center; font-size: 1.3rem; font-weight: 700; }
+button.rund { width: 3rem; height: 3rem; padding: 0; border-radius: 50%; font-size: 1.6rem; line-height: 1; }
+
+/* Scan beim Anlernen */
+.scan { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+        border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; background: #f6f8fa;
+        border: 2px dashed var(--linie); }
+.scan-text { display: flex; flex-direction: column; }
+.scan-text strong { font-size: 1.15rem; }
+.scan.wartet { border-color: var(--haupt); background: #eef6f3; }
+.scan.wartet .scan-text strong::before { content: ""; display: inline-block; width: .8rem; height: .8rem;
+  border-radius: 50%; background: var(--haupt); margin-right: .55rem; animation: puls 1.2s infinite; }
+.scan.ok { border-style: solid; border-color: var(--ok); background: var(--ok-hell); }
+.scan.fehler { border-style: solid; border-color: var(--fehler); background: var(--fehler-hell); }
+@keyframes puls { 50% { opacity: .2; transform: scale(.7); } }
+
+/* Verwaltung */
+.zeilenkopf { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap;
+              margin: 1rem 0 .6rem; }
+.zeilenkopf h1, .zeilenkopf h2 { margin: 0; }
+.tabelle { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.tabelle th { text-align: left; color: var(--leise); font-weight: 600; font-size: .82rem;
+              text-transform: uppercase; letter-spacing: .03em; padding: .6rem .5rem; }
+.tabelle td { padding: .7rem .5rem; border-top: 1px solid var(--linie); vertical-align: top; }
+.kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .9rem; }
+.kachel { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--radius);
+          padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .15rem; }
+.kachel .wert { font-size: 2rem; font-weight: 800; line-height: 1.2; }
+.kachel.knapp { border-color: var(--warn); background: var(--warn-hell); }
+.kachel .marke-fehler { align-self: flex-start; margin-top: .3rem; }
+
+/* Kalender */
+.monatskopf { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.monatskopf h1 { margin: 0; text-align: center; }
+.monatskopf .knopf { width: 3rem; height: 3rem; padding: 0; font-size: 1.6rem; }
+.kalender { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 5px; margin: 1rem 0; }
+.kalender th { color: var(--leise); font-weight: 600; font-size: .9rem; }
+.kalender td { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 10px; padding: 0;
+               height: 4.2rem; vertical-align: top; }
+.kalender td a { display: flex; flex-direction: column; height: 100%; padding: .3rem .4rem;
+                 color: inherit; text-decoration: none; }
+.kalender .nr { font-weight: 600; font-size: .95rem; }
+.kalender .symbol { margin-top: auto; font-weight: 800; font-size: 1.05rem; }
+.kalender td.fremd { opacity: .35; }
+.kalender td.heute { border: 2px solid var(--text); }
+.kalender td.gewaehlt { outline: 3px solid #9cd2c3; }
+.kalender td.ok { background: var(--ok-hell); border-color: #9fd8ae; color: var(--ok); }
+.kalender td.teil { background: var(--warn-hell); border-color: #f0c674; color: var(--warn); }
+.kalender td.fehler { background: var(--fehler-hell); border-color: #f2a59c; color: var(--fehler); }
+.kalender td.verpasst { background: #ececec; color: var(--verpasst); }
+.kalender td .nr { color: var(--text); }
+.legende { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; font-size: .9rem;
+           color: var(--leise); }
+.legende li { display: flex; align-items: center; gap: .4rem; }
+.punkt { width: .9rem; height: .9rem; border-radius: 4px; display: inline-block; }
+.punkt.ok { background: #9fd8ae; } .punkt.teil { background: #f0c674; }
+.punkt.fehler { background: #f2a59c; } .punkt.verpasst { background: #cfcfcf; }
+
+@media (max-width: 560px) {
+  html { font-size: 18px; }
+  .tabelle thead { display: none; }
+  .tabelle tr { display: block; border-top: 1px solid var(--linie); padding: .4rem 0; }
+  .tabelle td { display: block; border: 0; padding: .15rem .5rem; }
+  .tabelle td.rechts { text-align: left; padding-bottom: .5rem; }
+  .kalender { border-spacing: 3px; }
+  .kalender td { height: 3.4rem; }
+  .kalender td a { padding: .2rem; }
+  .kalender .symbol { font-size: .85rem; }
+}

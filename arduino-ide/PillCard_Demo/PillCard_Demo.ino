@@ -60,7 +60,7 @@ const uint8_t ANZAHL_KAMMERN = 3;
 const int WINKEL_RUHE[ANZAHL_KAMMERN]    = {0, 0, 0};
 const int WINKEL_AUSGABE[ANZAHL_KAMMERN] = {90, 90, 90};
 
-const uint8_t  MAX_PRO_KAMMER   = 3;    // mehr Tabletten pro Kammer nimmt der ESP32 nicht an
+const uint8_t  MAX_PRO_KAMMER   = 9;    // mehr Tabletten pro Kammer nimmt der ESP32 nicht an (einstellig fürs Display)
 const uint8_t  VERSUCHE         = 2;    // so oft fährt der Servo, wenn das Mikrofon nichts hört
 const uint16_t SERVO_ZURUECK_MS = 500;  // Zeit für den Rückweg, bevor die nächste Tablette kommt
 

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titel %}PillCard{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="kopf">
+    <a class="marke" href="{{ url_for('start') }}"><span class="pille" aria-hidden="true"></span>PillCard</a>
+    <nav>
+      {% block nav %}
+      {% if angemeldet %}
+        <a href="{{ url_for('mein') }}">Heute</a>
+        <a href="{{ url_for('kalender') }}">Kalender</a>
+        <form method="post" action="{{ url_for('logout') }}" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="link">Abmelden</button>
+        </form>
+      {% endif %}
+      {% endblock %}
+    </nav>
+  </header>
+
+  <main>
+    {% with meldungen = get_flashed_messages(with_categories=true) %}
+      {% for art, text in meldungen %}
+        <div class="meldung {{ art }}" role="{{ 'alert' if art == 'fehler' else 'status' }}">{{ text }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block inhalt %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{% extends "admin_base.html" %}
+{% block titel %}Verwaltung einrichten – PillCard{% endblock %}
+{% block inhalt %}
+<section class="karte schmal">
+  <h1>Verwaltung einrichten</h1>
+  <p class="leise">Beim ersten Start legen Sie das Passwort für die Verwaltung fest.
+    Damit lassen sich später Nutzer, Karten und Medikamente ändern.</p>
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Neues Passwort
+      <input name="passwort" type="password" autocomplete="new-password" minlength="6" required autofocus>
+    </label>
+    <label>Noch einmal
+      <input name="wiederholung" type="password" autocomplete="new-password" minlength="6" required>
+    </label>
+    <button class="gross">Festlegen</button>
+  </form>
+</section>
+{% endblock %}

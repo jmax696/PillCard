@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titel %}Anmelden – PillCard{% endblock %}
+{% block inhalt %}
+<section class="karte schmal">
+  <h1>Willkommen</h1>
+  <p class="leise">Melden Sie sich an, um Ihre Tabletten zu sehen und anzupassen.</p>
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Benutzername
+      <input name="benutzername" autocomplete="username" autocapitalize="none" required autofocus>
+    </label>
+    <label>Passwort
+      <input name="passwort" type="password" autocomplete="current-password" required>
+    </label>
+    <button class="gross">Anmelden</button>
+  </form>
+</section>
+<p class="fuss"><a href="{{ url_for('admin') }}">Zur Verwaltung</a></p>
+{% endblock %}
