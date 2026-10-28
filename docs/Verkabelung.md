@@ -31,13 +31,58 @@ Pinbelegung wie in [`include/Hardware.h`](../include/Hardware.h). Wer umsteckt, 
 | | + (rot) / − (braun) | 5V-Schiene / GND-Schiene | |
 | **LED grün** | + (langes Bein) | IO16 über 100 Ω (braun-schwarz-braun) | − an GND |
 | **LED rot** | + (langes Bein) | IO17 über 100 Ω (braun-schwarz-braun) | − an GND |
-| **Lichtschranke 1 / 2 / 3** | OUT | IO34 / IO35 / IO36 (VP) | VCC an **3.3V**, damit OUT max. 3.3V liefert |
+| **Mikrofon (analoges Modul)** | S (Signal) | IO34 | liegt unter allen Kammern, ersetzt die Lichtschranken (Sketch `PillCard_Demo`) |
+| | V | **3V3** | nicht 5V, sonst kann S bis zu 5V an IO34 legen |
+| | G | GND-Schiene | |
+| **Raspberry Pi (später)** | GPIO15 / RXD (Pin 10) | IO2 (TX) | Aufträge per UART, 115200 Baud, beide 3.3V |
+| | GPIO14 / TXD (Pin 8) | IO39 (RX) | |
+| | GND (Pin 6) | GND-Schiene | |
+| ~~Lichtschranke 1 / 2 / 3~~ | OUT | ~~IO34~~ / IO35 / IO36 (VP) | nicht mehr geplant, IO34 hat jetzt das Mikrofon |
 | **Kupferband Schale** | Streifen A / B | IO13 / GND | interner Pull-up |
 | **ESP32** | GND | GND-Schiene | gemeinsame Masse, Pflicht |
 
 Strom: Das ESP32 läuft über USB. Servos und LCD hängen an der 5V-Schiene des
 Elegoo-Netzteilmoduls (Jumper auf 5V, versorgt per 9V-Netzteil oder USB). Plus des Moduls
 **nie** an 5V/VIN oder 3V3 des ESP32, nur GND wird gemeinsam verbunden.
+
+## Raspberry Pi (später: RFID, Pläne, Website)
+
+![Verdrahtung mit Raspberry Pi](Schaltplan_RaspberryPi.svg)
+
+Der Pi liest die Karten und schickt dem ESP32 nur Aufträge (`AUFTRAG 17 K1=1 K3=2`). Servos,
+Mikrofon und Display bleiben am ESP32. Wenn der RC522 an den Pi wandert, werden am ESP32
+IO5, IO18, IO19, IO23 und IO4 frei.
+
+Pin-Nummern sind die Stiftnummern der 40-poligen Leiste (gleich bei Pi 3, 4 und 5). Pin 1
+ist das Ende, das am weitesten von den USB-Buchsen entfernt ist, ungerade Pins liegen innen.
+
+| Bauteil | Pin am Bauteil | Raspberry Pi | Hinweis |
+|---|---|---|---|
+| **RFID-RC522** | SDA | GPIO8 / CE0 (Pin 24) | Chip-Auswahl |
+| | SCK | GPIO11 / SCLK (Pin 23) | |
+| | MOSI | GPIO10 / MOSI (Pin 19) | |
+| | MISO | GPIO9 / MISO (Pin 21) | |
+| | IRQ | – | frei lassen |
+| | GND | GND (Pin 20) | |
+| | RST | GPIO25 (Pin 22) | Voreinstellung der Python-Bibliothek `mfrc522` |
+| | 3.3V | **3V3 (Pin 17)** | nie an 5V, die Pi-Pins vertragen keine 5V |
+| **ESP32** | IO39 (RX) | GPIO14 / TXD (Pin 8) | über Kreuz: TX an RX |
+| | IO2 (TX) | GPIO15 / RXD (Pin 10) | |
+| | GND | GND (Pin 6) | Pflicht, sonst kommen nur falsche Zeichen an |
+| **Lautsprecher (später)** | USB | USB-Buchse | keine GPIO-Pins |
+
+Strom: Der Pi bekommt sein eigenes Netzteil (Pi 4: USB-C 5V/3A, Pi 5: USB-C 5V/5A). Kein
+5V-Kabel zum ESP32 oder zum Elegoo-Netzteilmodul, nur GND ist gemeinsam.
+
+Einrichten auf dem Pi:
+
+1. `sudo raspi-config` → Interface Options → **SPI** → Ja.
+2. `sudo raspi-config` → Interface Options → **Serial Port** → Login-Shell über seriell: **Nein**,
+   serielle Hardware: **Ja**. Neu starten.
+3. Prüfen: `ls /dev/spidev0.0 /dev/serial0` muss beide Dateien zeigen.
+4. Pi 5: zusätzlich `rpi-lgpio` installieren, weil `RPi.GPIO` (von `mfrc522` benutzt) dort nicht läuft.
+
+Im Sketch `PillCard_Demo` danach `RFID_AUF_ESP = false` und `PI_VERBUNDEN = true` setzen.
 
 ## RFID-Leser: I²C-Variante (nur für 4-Pin-Module)
 
