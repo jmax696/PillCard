@@ -3,16 +3,16 @@
 Der Pi entscheidet, wer was bekommt und ob heute schon genommen wurde.
 Der ESP32 fährt die Servos, prüft mit dem Mikrofon und zeigt alles auf dem Display.
 
+Pläne, Anpassungen und Ausgaben liegen in der SQLite-Datei pillcard.db (siehe datenbank.py).
+
 Start (im Ordner ~/pillcard):
     venv/bin/python pillcard.py            normaler Betrieb
     venv/bin/python pillcard.py --uids     nur UIDs anzeigen (zum Eintragen in plaene.json)
-    venv/bin/python pillcard.py --reset    "heute schon genommen" für alle zurücksetzen
+    venv/bin/python pillcard.py --reset    heutige Ausgaben löschen, danach dürfen alle wieder
 """
 import argparse
 import datetime
 import glob
-import json
-import os
 import time
 from pathlib import Path
 
@@ -20,10 +20,9 @@ import RPi.GPIO as GPIO
 import serial
 from mfrc522 import MFRC522
 
+import datenbank
+
 ORDNER = Path(__file__).resolve().parent
-PLAENE = ORDNER / "plaene.json"          # wer bekommt was (später von der Website bearbeitet)
-STAND = ORDNER / "stand.json"            # wer hat heute schon genommen
-PROTOKOLL = ORDNER / "ausgaben.csv"      # jede Ausgabe mit Uhrzeit
 UNBEKANNT = ORDNER / "unbekannte_uids.txt"
 
 AUFTRAG_TIMEOUT = 60   # s, so lange darf der ESP32 für einen Auftrag brauchen
@@ -33,35 +32,6 @@ ANTWORTEN = ("BEREIT", "OK", "TABLETTE", "FERTIG", "FEHLER")
 
 def jetzt():
     return datetime.datetime.now()
-
-
-def json_lesen(pfad, standard):
-    """Liest eine JSON-Datei; fehlt sie oder ist sie kaputt (z. B. Stromausfall), gibt es den Standardwert."""
-    try:
-        return json.loads(pfad.read_text(encoding="utf-8"))
-    except (FileNotFoundError, ValueError) as fehler:
-        if not isinstance(fehler, FileNotFoundError):
-            print(f"  !! {pfad.name} ist beschädigt, nehme Standardwert")
-        return standard
-
-
-def json_schreiben(pfad, daten):
-    """Schreibt erst in eine Hilfsdatei und benennt dann um, damit nie eine halbe Datei entsteht."""
-    tmp = pfad.with_suffix(".tmp")
-    with tmp.open("w", encoding="utf-8") as datei:
-        datei.write(json.dumps(daten, indent=2, ensure_ascii=False))
-        datei.flush()
-        os.fsync(datei.fileno())  # sofort auf die SD-Karte, nicht erst irgendwann
-    tmp.replace(pfad)
-
-
-def stand_heute():
-    """Gibt zurück, wer heute schon genommen hat; ab Mitternacht ist die Liste wieder leer."""
-    stand = json_lesen(STAND, {})
-    heute = jetzt().date().isoformat()
-    if stand.get("datum") != heute:
-        stand = {"datum": heute, "genommen": {}}
-    return stand
 
 
 class Esp:
@@ -102,8 +72,8 @@ class Esp:
             if zeile[0] == "FEHLER":
                 return None
             if zeile[0] == "FERTIG" and zeile[1] == str(nummer):
-                # "K1=1" -> {"1": 1}
-                return {t[1:].split("=")[0]: int(t.split("=")[1]) for t in zeile[2:]}
+                # "K1=1" -> {1: 1}
+                return {int(t[1:].split("=")[0]): int(t.split("=")[1]) for t in zeile[2:]}
         print("  !! ESP32 hat nicht rechtzeitig FERTIG gemeldet")
         return None
 
@@ -119,51 +89,54 @@ def uid_lesen(leser):
     return " ".join(f"{b:02X}" for b in uid[:4])
 
 
-def karte_bearbeiten(uid, esp):
+def karte_bearbeiten(uid, esp, db):
     """Entscheidet für eine Karte: unbekannt, heute schon genommen oder Ausgabe."""
-    nutzer = json_lesen(PLAENE, {"nutzer": {}})["nutzer"]
-    plan = nutzer.get(uid)
-    print(f"[{jetzt():%H:%M:%S}] Karte {uid}" + (f" = {plan['name']}" if plan else " (unbekannt)"))
+    nutzer = datenbank.nutzer_zu_uid(db, uid)
+    print(f"[{jetzt():%H:%M:%S}] Karte {uid}" + (f" = {nutzer['name']}" if nutzer else " (unbekannt)"))
 
-    if not plan:
+    if not nutzer:
         with UNBEKANNT.open("a", encoding="utf-8") as datei:
             datei.write(f"{jetzt():%Y-%m-%d %H:%M:%S} {uid}\n")
         esp.senden("MELDUNG unbekannt")
         return
 
-    stand = stand_heute()
-    if uid in stand["genommen"]:
-        print(f"  heute schon um {stand['genommen'][uid]} genommen")
-        esp.senden(f"MELDUNG schon_genommen {plan.get('wieder_um', '')}".strip())
+    genommen_um = datenbank.heute_genommen_um(db, nutzer["id"])
+    if genommen_um:
+        print(f"  heute schon um {genommen_um} genommen")
+        esp.senden(f"MELDUNG schon_genommen {nutzer['wieder_um'] or ''}".strip())
         return
 
-    kammern = {k: int(n) for k, n in plan["kammern"].items()}
+    kammern = datenbank.heutige_dosis(db, nutzer["id"])
+    if not kammern:
+        print("  heute nichts im Plan")
+        esp.senden("MELDUNG Heute nichts")
+        return
+
+    zeit = f"{jetzt():%Y-%m-%d %H:%M:%S}"
     nummer = int(time.time()) % 100000
     ergebnis = esp.auftrag(nummer, kammern)
 
-    # Auch bei Fehlern als genommen eintragen, damit nichts doppelt ausgegeben wird
-    stand["genommen"][uid] = f"{jetzt():%H:%M}"
-    json_schreiben(STAND, stand)
+    # Auch bei Fehlern eintragen (erhalten bleibt dann leer), damit nichts doppelt ausgegeben wird
+    datenbank.ausgabe_eintragen(db, nutzer["id"], zeit, kammern, ergebnis)
 
-    bestellt = " ".join(f"K{k}={n}" for k, n in sorted(kammern.items()) if n > 0)
+    bestellt = " ".join(f"K{k}={n}" for k, n in sorted(kammern.items()))
     erhalten = " ".join(f"K{k}={n}" for k, n in sorted((ergebnis or {}).items()))
-    neu = not PROTOKOLL.exists()
-    with PROTOKOLL.open("a", encoding="utf-8") as datei:
-        if neu:
-            datei.write("zeit;uid;name;bestellt;erhalten\n")
-        datei.write(f"{jetzt():%Y-%m-%d %H:%M:%S};{uid};{plan['name']};{bestellt};{erhalten or 'FEHLER'}\n")
     print(f"  bestellt {bestellt}, erhalten {erhalten or 'FEHLER'}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="PillCard auf dem Raspberry Pi")
     parser.add_argument("--uids", action="store_true", help="nur UIDs anzeigen")
-    parser.add_argument("--reset", action="store_true", help="heute schon genommen zurücksetzen")
+    parser.add_argument("--reset", action="store_true", help="heutige Ausgaben löschen")
     args = parser.parse_args()
 
+    db = datenbank.verbinden()
+    if not db.execute("SELECT 1 FROM nutzer").fetchone():
+        datenbank.import_plaene(db)  # erster Start: Nutzer aus plaene.json übernehmen
+
     if args.reset:
-        json_schreiben(STAND, {"datum": jetzt().date().isoformat(), "genommen": {}})
-        print("Zurückgesetzt: alle dürfen heute wieder.")
+        geloescht = datenbank.heute_zuruecksetzen(db)
+        print(f"Zurückgesetzt: {geloescht} heutige Ausgaben gelöscht, alle dürfen wieder.")
         return
 
     leser = MFRC522()  # SPI0, RST an Pin 22 (GPIO25)
@@ -185,10 +158,10 @@ def main():
             letzte_uid = uid
 
             if args.uids:
-                name = json_lesen(PLAENE, {"nutzer": {}})["nutzer"].get(uid, {}).get("name", "unbekannt")
-                print(f"UID {uid}  ({name})", flush=True)
+                nutzer = datenbank.nutzer_zu_uid(db, uid)
+                print(f"UID {uid}  ({nutzer['name'] if nutzer else 'unbekannt'})", flush=True)
             else:
-                karte_bearbeiten(uid, esp)
+                karte_bearbeiten(uid, esp, db)
             letzte_zeit = time.time()
     except KeyboardInterrupt:
         print("\nBeendet.")

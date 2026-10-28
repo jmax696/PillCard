@@ -1,8 +1,12 @@
-# Datenbank (geplant)
+# Datenbank
 
-Für die Website soll der Pi seine Daten in einer SQLite-Datei `pillcard.db` halten. Bis dahin
-liegen sie in `pi/plaene.json` (Pläne), `stand.json` (heute genommen) und `ausgaben.csv`
-(Protokoll) auf dem Pi.
+Der Pi hält seine Daten in der SQLite-Datei `~/pillcard/pillcard.db`. Angelegt und befüllt wird
+sie von [`pi/datenbank.py`](../pi/datenbank.py), `pi/pillcard.py` fragt dort die heutige Dosis ab
+und trägt jede Ausgabe ein.
+
+Bis die Website fertig ist, werden Pläne in `pi/plaene.json` geändert und auf dem Pi mit
+`venv/bin/python datenbank.py import` übernommen. `venv/bin/python datenbank.py zeigen` zeigt
+den Inhalt aller Tabellen.
 
 ![ER-Diagramm der PillCard-Datenbank](ER_Datenbank.svg)
 

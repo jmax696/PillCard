@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
 <rect width="1200" height="800" fill="#ffffff"/>
-<text x="40" y="42" font-family="Helvetica, Arial, sans-serif" font-size="24" text-anchor="start" font-weight="bold" fill="#1f2328">PillCard – Datenbank (SQLite, geplant)</text>
+<text x="40" y="42" font-family="Helvetica, Arial, sans-serif" font-size="24" text-anchor="start" font-weight="bold" fill="#1f2328">PillCard – Datenbank (SQLite)</text>
 <text x="40" y="66" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#57606a">ER-Diagramm in Krähenfuß-Notation · eine Datei pillcard.db auf dem Raspberry Pi · Grundlage für die Website</text>
 <path d="M320,296.0 L390,296.0" fill="none" stroke="#24292f" stroke-width="1.8"/>
 <path d="M390,141.0 L390,550.0" fill="none" stroke="#24292f" stroke-width="1.8"/>
