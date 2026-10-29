@@ -40,7 +40,8 @@
       {% if k.bedarf %}{{ k.bedarf }} pro Tag · reicht {{ k.reicht_tage }} {{ 'Tag' if k.reicht_tage == 1 else 'Tage' }}
       {% else %}von niemandem genutzt{% endif %}
     </span>
-    {% if k.knapp %}<span class="marke-fehler">bald leer</span>{% endif %}
+    {% if k.leer %}<a class="marke-fehler" href="{{ url_for('kammer_rezept', nr=k.nr) }}">leer · E-Rezept scannen</a>
+    {% elif k.knapp %}<span class="marke-fehler">bald leer</span>{% endif %}
   </div>
   {% endfor %}
 </div>

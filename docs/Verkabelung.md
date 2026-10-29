@@ -1,6 +1,8 @@
 # Verkabelung
 
-Pinbelegung wie in [`include/Hardware.h`](../include/Hardware.h). Wer umsteckt, ändert es dort.
+Pinbelegung wie im Sketch [`arduino-ide/PillCard_Demo`](../arduino-ide/PillCard_Demo/PillCard_Demo.ino).
+Wer umsteckt, ändert es dort. Die älteren Test-Sketches nehmen [`include/Hardware.h`](../include/Hardware.h),
+dort hängt der RC522 noch am ESP32.
 
 ## ESP32 (aktuell benutzt)
 
@@ -8,14 +10,7 @@ Pinbelegung wie in [`include/Hardware.h`](../include/Hardware.h). Wer umsteckt, 
 
 | Bauteil | Bauteil-Pin | ESP32 | Hinweis |
 |---|---|---|---|
-| **RFID-RC522** (blau, SPI) | SDA | IO5 | |
-| | SCK | IO18 | |
-| | MOSI | IO23 | |
-| | MISO | IO19 | |
-| | IRQ | – | frei lassen |
-| | GND | GND-Schiene | |
-| | RST | IO4 | |
-| | 3.3V | **3V3 des ESP32** | nicht 5V |
+| ~~RFID-RC522~~ | – | – | hängt jetzt am Raspberry Pi (siehe unten). Früher IO5 / IO18 / IO23 / IO19 / IO4; zurück an den ESP32 nur mit `RFID_AUF_ESP = true`, dann ohne Leer-LEDs |
 | **LCD 16×2** (16 Pins, ohne I²C) | 1 VSS | GND-Schiene | Pin 1: von vorne gesehen ganz links; auf der Rückseite rechts, eckiges Lötpad |
 | | 2 VDD | 5V-Schiene | |
 | | 3 V0 (Kontrast) | erst frei lassen | Datenblatt: VDD−V0 ≈ 3.8 V, also V0 ≈ 1.2 V. Direkt an GND ist zu dunkel, 1 kΩ an GND passt meist |
@@ -31,10 +26,11 @@ Pinbelegung wie in [`include/Hardware.h`](../include/Hardware.h). Wer umsteckt, 
 | | + (rot) / − (braun) | 5V-Schiene / GND-Schiene | |
 | **LED grün** | + (langes Bein) | IO16 über 100 Ω (braun-schwarz-braun) | − an GND |
 | **LED rot** | + (langes Bein) | IO17 über 100 Ω (braun-schwarz-braun) | − an GND |
+| **Leer-LED Kammer 1 / 2 / 3** | + (langes Bein) | IO18 / IO19 / IO23, je über 100 Ω | − an GND; sitzt oben am Einfüllstutzen, leuchtet bei Vorrat 0. Pins sind frei, weil der RC522 am Pi hängt |
 | **Mikrofon (analoges Modul)** | S (Signal) | IO34 | liegt unter allen Kammern, ersetzt die Lichtschranken (Sketch `PillCard_Demo`) |
 | | V | **3V3** | nicht 5V, sonst kann S bis zu 5V an IO34 legen |
 | | G | GND-Schiene | |
-| **Raspberry Pi (später)** | USB-Buchse | USB-Anschluss des ESP32 | ein USB-Kabel für Strom und Aufträge, Alternative mit 3 Kabeln siehe unten |
+| **Raspberry Pi** | USB-Buchse | USB-Anschluss des ESP32 | ein USB-Kabel für Strom und Aufträge, Alternative mit 3 Kabeln siehe unten |
 | ~~Lichtschranke 1 / 2 / 3~~ | OUT | ~~IO34~~ / IO35 / IO36 (VP) | nicht mehr geplant, IO34 hat jetzt das Mikrofon |
 | **Kupferband Schale** | Streifen A / B | IO13 / GND | interner Pull-up |
 | **ESP32** | GND | GND-Schiene | gemeinsame Masse, Pflicht |
@@ -43,13 +39,13 @@ Strom: Das ESP32 läuft über USB. Servos und LCD hängen an der 5V-Schiene des
 Elegoo-Netzteilmoduls (Jumper auf 5V, versorgt per 9V-Netzteil oder USB). Plus des Moduls
 **nie** an 5V/VIN oder 3V3 des ESP32, nur GND wird gemeinsam verbunden.
 
-## Raspberry Pi (später: RFID, Pläne, Website)
+## Raspberry Pi (RFID, Pläne, Website)
 
 ![Verdrahtung mit Raspberry Pi](Schaltplan_RaspberryPi.svg)
 
-Der Pi liest die Karten und schickt dem ESP32 nur Aufträge (`AUFTRAG 17 K1=1 K3=2`). Servos,
-Mikrofon und Display bleiben am ESP32. Wenn der RC522 an den Pi wandert, werden am ESP32
-IO5, IO18, IO19, IO23 und IO4 frei.
+Der Pi liest die Karten und schickt dem ESP32 nur Aufträge (`AUFTRAG 17 K1=1 K3=2`) und welche
+Kammern leer sind (`LEER 0 1 0`). Servos, Mikrofon, Display und LEDs bleiben am ESP32. Seit der RC522
+am Pi hängt, haben IO18, IO19 und IO23 die Leer-LEDs; IO5 und IO4 sind frei.
 
 Pin-Nummern sind die Stiftnummern der 40-poligen Leiste (gleich bei Pi 3, 4 und 5). Pin 1
 ist das Ende, das am weitesten von den USB-Buchsen entfernt ist, ungerade Pins liegen innen.

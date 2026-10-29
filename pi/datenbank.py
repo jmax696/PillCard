@@ -61,6 +61,17 @@ CREATE TABLE IF NOT EXISTS scan_auftrag (
   angefragt  TEXT NOT NULL,              -- von der Website beim Anlernen
   uid        TEXT                        -- trägt pillcard.py ein, sobald eine Karte kommt
 );
+CREATE TABLE IF NOT EXISTS rezepte (
+  id          INTEGER PRIMARY KEY,
+  eingelesen  TEXT NOT NULL,             -- wann die Kammer damit neu belegt wurde
+  kammer      INTEGER REFERENCES kammern(nr),
+  nutzer_id   INTEGER REFERENCES nutzer(id),
+  medikament  TEXT NOT NULL,
+  pro_tag     INTEGER NOT NULL,
+  vorrat      INTEGER NOT NULL,          -- so viele Tabletten wurden eingefüllt
+  rezept_id   TEXT,                      -- Id aus dem E-Rezept bzw. eMediplan
+  roh         TEXT                       -- der gescannte QR-Text, unverändert
+);
 """
 
 # Spalten, die nach dem ersten Entwurf dazugekommen sind; werden in alten Datenbanken nachgetragen
@@ -161,8 +172,29 @@ def vorrat_status(db):
         k["vorrat"] = k["vorrat"] or 0
         k["reicht_tage"] = k["vorrat"] // k["bedarf"] if k["bedarf"] else None
         k["knapp"] = bool(k["bedarf"]) and k["vorrat"] <= (k["warnen_ab"] or 0)
+        k["leer"] = k["vorrat"] <= 0   # dann leuchtet die LED am Einfüllstutzen
         zeilen.append(k)
     return zeilen
+
+
+def leere_kammern(db):
+    """Pro Kammer (nach Nummer sortiert) True, wenn kein Vorrat mehr da ist. Steuert die Leer-LEDs."""
+    return [(k["vorrat"] or 0) <= 0 for k in db.execute("SELECT vorrat FROM kammern ORDER BY nr")]
+
+
+def kammer_neu_belegen(db, kammer, medikament, vorrat, nutzer_id, pro_tag, rezept_id, roh):
+    """Neues Medikament aus einem E-Rezept in eine Kammer. Weil dort jetzt etwas anderes liegt,
+    fallen die alten Pläne und künftigen Anpassungen aller Nutzer für diese Kammer weg."""
+    with db:
+        db.execute("UPDATE kammern SET medikament = ?, vorrat = ?, anpassbar = 0, max_pro_tag = ? WHERE nr = ?",
+                   (medikament, vorrat, max(1, pro_tag), kammer))
+        db.execute(f"DELETE FROM anpassung WHERE kammer = ? AND datum >= {HEUTE}", (kammer,))
+        db.execute("DELETE FROM plan WHERE kammer = ?", (kammer,))
+        if pro_tag > 0:
+            db.execute("INSERT INTO plan (nutzer_id, kammer, anzahl) VALUES (?, ?, ?)", (nutzer_id, kammer, pro_tag))
+        db.execute("""INSERT INTO rezepte (eingelesen, kammer, nutzer_id, medikament, pro_tag, vorrat, rezept_id, roh)
+                      VALUES (DATETIME('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?)""",
+                   (kammer, nutzer_id, medikament, pro_tag, vorrat, rezept_id, roh))
 
 
 def heute_zuruecksetzen(db):
@@ -230,13 +262,15 @@ def import_plaene(db):
 
 
 def zeigen(db):
-    for tabelle in ("nutzer", "kammern", "plan", "anpassung", "ausgaben", "scan_auftrag"):
+    for tabelle in ("nutzer", "kammern", "plan", "anpassung", "ausgaben", "scan_auftrag", "rezepte"):
         zeilen = db.execute(f"SELECT * FROM {tabelle}").fetchall()
         print(f"\n== {tabelle} ({len(zeilen)})")
         for z in zeilen:
             werte = dict(z)
             if "passwort" in werte:
                 werte["passwort"] = "gesetzt" if werte["passwort"] else "-"
+            if werte.get("roh"):
+                werte["roh"] = werte["roh"][:30] + "…"
             print("  ", werte)
 
 

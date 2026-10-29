@@ -20,7 +20,18 @@ Aussehen in `pi/static/style.css`. Kein Internet nötig, alles liegt auf dem Pi.
   zeigt die Seite das an. Ohne laufendes `pillcard.py` lässt sich die UID auch von Hand eintragen.
 - **Bearbeiten:** Name, Karte (neu scannen), Passwort, Dosierung; Nutzer löschen.
 - **Kammern:** Medikament, ob Nutzer selbst anpassen dürfen und bis zu welcher Menge
-  („Selbst anpassen bis“), Vorrat, Nachfüllen (+), Warnschwelle.
+  („Selbst anpassen bis“), Vorrat, Nachfüllen (+), Warnschwelle. Eine leere Kammer (Vorrat 0) ist
+  rot markiert, dann leuchtet auch die LED am Einfüllstutzen.
+- **E-Rezept scannen** (`/admin/kammern/<nr>/rezept`): leere Kammer mit einem neuen Medikament belegen.
+  1. QR-Code des E-Rezepts bzw. eMediplans fotografieren (am Handy öffnet sich die Kamera) oder den Text
+     einfügen, z. B. von einem USB-QR-Scanner. Gelesen wird der Code im Browser (eingebaute Erkennung,
+     sonst [jsQR](https://github.com/cozmo/jsQR) vom CDN). Eine Live-Kamera geht nicht, weil Browser die
+     Kamera nur über HTTPS freigeben.
+  2. Medikament aus dem Rezept wählen. Die Website schlägt Tabletten pro Tag (Summe aus morgens, mittags,
+     abends, nachts) und den Nutzer vor, dessen Name zum Patienten passt.
+  3. Namen ergänzen (echte E-Rezepte enthalten nur GTIN/Pharmacode), eingefüllte Menge eintragen,
+     speichern. Pläne anderer Nutzer für diese Kammer fallen weg, „selbst anpassen“ ist aus.
+  Test-Codes liegen in [`Test-Rezepte/`](Test-Rezepte/). Die Signatur des E-Rezepts wird nicht geprüft.
 - **Heute zurücksetzen** (für die Demo): löscht die heutigen Ausgaben. Gibt es auf der Übersicht
   und im Demo-Dashboard.
 

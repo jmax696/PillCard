@@ -52,6 +52,17 @@ Details zu Anforderungen, Sensoren und offenen Punkten: [REQUIREMENTS.md](REQUIR
 - [ ] Video Showcase (30.10.2026)
 - [ ] Portfolio-Abgabe: Bericht, Video, Code, Schaltpläne (20.11.2026)
 
+### Morgen angehen (30.10.2026, vor dem Video Showcase um 16:00)
+
+- [ ] Sensor für die Becherentnahme (Kupferkontakt in der Schale, IO13)
+- [ ] Motorhalterung im Gehäuse
+- [ ] Mikrofon kalibrieren bzw. alles einmal zusammenbauen
+
+### Später
+
+- [ ] Kamera anschliessen: E-Rezept-QR-Code lesen, wenn eine Kammer leer ist oder das Medikament wechselt,
+      und für die Kammer ein neues Medikamenten-Profil anlegen (FR-16 bis FR-18 in [REQUIREMENTS.md](REQUIREMENTS.md))
+
 ## Repo-Struktur
 
 PlatformIO-Projekt mit mehreren Programmen. In VS Code unten in der Statusleiste die

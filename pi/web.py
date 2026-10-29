@@ -25,6 +25,7 @@ from flask import Flask, abort, flash, g, jsonify, redirect, render_template, re
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import datenbank
+import erezept
 
 ORDNER = Path(__file__).resolve().parent
 SCHLUESSEL = ORDNER / "geheim.key"
@@ -35,6 +36,7 @@ MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 WOCHENTAGE_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
 DEMO_AKTUALISIEREN = 2   # s, so oft holt das Demo-Dashboard neue Daten
+REZEPT_MAX_ZEICHEN = 20000   # ein E-Rezept-QR-Code hat höchstens ein paar tausend Zeichen
 
 
 def geheimer_schluessel():
@@ -534,6 +536,91 @@ def admin_kammern():
         flash("Kammern gespeichert.", "ok")
         return redirect(url_for("admin_kammern"))
     return render_template("admin_kammern.html", vorrat=datenbank.vorrat_status(db()), max_pro_kammer=MAX_PRO_KAMMER)
+
+
+# ---------- E-Rezept: leere Kammer neu belegen ----------
+
+def nutzer_vorschlag(patient, alle):
+    """Nutzer, dessen Name zum Patienten im Rezept passt (Vorname, Nachname oder beides), sonst None."""
+    vorname, nachname = patient["vorname"].strip().lower(), patient["nachname"].strip().lower()
+    passend = {vorname, nachname, f"{vorname} {nachname}".strip()} - {""}
+    for n in alle:
+        if n["name"].strip().lower() in passend:
+            return n["id"]
+    return None
+
+
+def kammer_holen(nr):
+    k = next((k for k in datenbank.vorrat_status(db()) if k["nr"] == nr), None)
+    if not k:
+        abort(404)
+    return k
+
+
+def rezept_lesen(text):
+    """(rezept, fehlertext) aus dem gescannten QR-Text."""
+    if not text.strip():
+        return None, "Bitte zuerst den QR-Code scannen oder den Text einfügen."
+    if len(text) > REZEPT_MAX_ZEICHEN:
+        return None, "Der Text ist zu lang für ein E-Rezept."
+    try:
+        rezept = erezept.lesen(text)
+    except erezept.RezeptFehler as fehler:
+        return None, str(fehler)
+    if not rezept["medikamente"]:
+        return None, "Im Rezept stehen keine Medikamente."
+    return rezept, None
+
+
+@app.route("/admin/kammern/<int:nr>/rezept", methods=["GET", "POST"])
+@admin_noetig
+def kammer_rezept(nr):
+    k = kammer_holen(nr)
+    alle = db().execute("SELECT id, name FROM nutzer ORDER BY name").fetchall()
+    f = request.form
+    qr = f.get("qr", "")
+
+    if request.method == "GET" or f.get("schritt") == "scannen":
+        return render_template("admin_rezept.html", k=k, schritt="scannen", qr="")
+
+    rezept, fehler = rezept_lesen(qr)
+    if fehler:
+        flash(fehler, "fehler")
+        return render_template("admin_rezept.html", k=k, schritt="scannen", qr=qr)
+
+    if f.get("schritt") == "lesen":
+        return render_template("admin_rezept.html", k=k, schritt="zuordnen", qr=qr, rezept=rezept, nutzer=alle,
+                               vorschlag=nutzer_vorschlag(rezept["patient"], alle), max_pro_kammer=MAX_PRO_KAMMER)
+
+    # Speichern: alles noch einmal prüfen, der QR-Text kommt aus einem versteckten Feld zurück
+    index = zahl(f.get("med"), -1)
+    name = f.get("medikament", "").strip()[:40]
+    pro_tag = zahl(f.get("pro_tag"), -1)
+    vorrat = zahl(f.get("vorrat"), -1)
+    nutzer_id = zahl(f.get("nutzer"), -1)
+    fehler = []
+    if not 0 <= index < len(rezept["medikamente"]):
+        fehler.append("Bitte ein Medikament aus dem Rezept auswählen.")
+    if not name:
+        fehler.append("Bitte den Namen des Medikaments eintragen (steht auf der Packung).")
+    if not 0 <= pro_tag <= MAX_PRO_KAMMER:
+        fehler.append(f"Tabletten pro Tag: 0 bis {MAX_PRO_KAMMER}.")
+    if vorrat < 1:
+        fehler.append("Bitte eintragen, wie viele Tabletten eingefüllt wurden.")
+    if not any(n["id"] == nutzer_id for n in alle):
+        fehler.append("Bitte wählen, für wen das Medikament ist.")
+    if fehler:
+        for text in fehler:
+            flash(text, "fehler")
+        return render_template("admin_rezept.html", k=k, schritt="zuordnen", qr=qr, rezept=rezept, nutzer=alle,
+                               vorschlag=nutzer_id if nutzer_id > 0 else nutzer_vorschlag(rezept["patient"], alle),
+                               max_pro_kammer=MAX_PRO_KAMMER, werte=f)
+
+    datenbank.kammer_neu_belegen(db(), nr, name, vorrat, nutzer_id, pro_tag, rezept["rezept_id"], qr.strip())
+    wer = next(n["name"] for n in alle if n["id"] == nutzer_id)
+    flash(f"Kammer {nr} enthält jetzt {name}: {wer} bekommt {pro_tag} pro Tag, {vorrat} Tabletten eingefüllt. "
+          "Die Leer-LED geht in ein paar Sekunden aus.", "ok")
+    return redirect(url_for("admin_kammern"))
 
 
 @app.route("/admin/reset", methods=["POST"])

@@ -19,6 +19,7 @@ zeigt den Inhalt der Tabellen.
 | `ausgaben` | Jede Ausgabe pro Kammer, mit der laut Mikrofon wirklich ausgegebenen Menge |
 | `einstellungen` | Schlüssel/Wert, zurzeit nur das Passwort der Verwaltung (Hash) |
 | `scan_auftrag` | Website wartet auf eine Karte zum Anlernen; `pillcard.py` trägt die UID ein |
+| `rezepte` | Welche Kammer wann per E-Rezept neu belegt wurde, mit dem gescannten QR-Text |
 
 `plan` und `anpassung` lösen die n:m-Beziehung zwischen `nutzer` und `kammern` auf.
 
@@ -77,7 +78,22 @@ CREATE TABLE scan_auftrag (
   angefragt  TEXT NOT NULL,             -- gilt 2 Minuten
   uid        TEXT                       -- leer, bis eine Karte an den Leser kommt
 );
+
+CREATE TABLE rezepte (                  -- jede Neubelegung einer Kammer per E-Rezept
+  id          INTEGER PRIMARY KEY,
+  eingelesen  TEXT NOT NULL,            -- '2026-10-29 14:03:11'
+  kammer      INTEGER REFERENCES kammern(nr),
+  nutzer_id   INTEGER REFERENCES nutzer(id),
+  medikament  TEXT NOT NULL,
+  pro_tag     INTEGER NOT NULL,
+  vorrat      INTEGER NOT NULL,         -- eingefüllte Tabletten
+  rezept_id   TEXT,                     -- Id aus dem CHMED16A-Rezept
+  roh         TEXT                      -- gescannter QR-Text
+);
 ```
+
+Eine Kammer gilt als **leer**, wenn `vorrat` 0 ist. `pillcard.py` prüft das alle 2 s und schickt dem
+ESP32 `LEER 0 1 0`, der damit die LEDs an den Einfüllstutzen schaltet.
 
 Spalten, die später dazugekommen sind (`benutzername`, `vorrat`, `warnen_ab`), trägt
 `datenbank.verbinden()` in einer älteren Datei automatisch nach.

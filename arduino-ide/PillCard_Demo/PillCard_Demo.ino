@@ -17,6 +17,7 @@
 //   probe 2        Kammer 2 gibt einmal aus, Pegelverlauf wird angezeigt
 //   schwelle 250   Schwelle für "Tablette gehört" setzen (danach oben in MIC_SCHWELLE eintragen)
 //   servo 1 45     Servo Kammer 1 auf 45 Grad (zum Einstellen der Winkel)
+//   LEER 0 1 0     LEDs an den Einfüllstutzen: 1 = Kammer leer, LED an (schickt der Pi)
 //   reset          "heute schon genommen" für alle Karten zurücksetzen
 //   ?              Hilfe
 //
@@ -28,6 +29,8 @@
 //   LCD:     RS->IO22  E->IO21  D4->IO32  D5->IO33  D6->IO14  D7->IO15  R/W->GND
 //   Servos:  Signal Kammer 1/2/3 -> IO25/IO26/IO27, rot->5V-Schiene, braun->GND-Schiene
 //   LEDs:    grün->IO16, rot->IO17 (je über 100 Ohm)
+//   Leer-LEDs an den Einfüllstutzen: Kammer 1/2/3 -> IO18/IO19/IO23 (je über 100 Ohm, - an GND).
+//     Die Pins sind nur frei, solange der RFID-Leser am Pi hängt (RFID_AUF_ESP = false).
 //   Mikrofon (analoges Modul): S->IO34, V->3V3 (NICHT 5V, sonst bis zu 5V am Pin!), G->GND
 //   Pi (später): USB-Kabel vom ESP32 in eine USB-Buchse des Pi, sonst nichts.
 //     Alternative mit 3 Kabeln: ESP IO2 (TX) -> Pi GPIO15/RXD, ESP IO39 (RX) <- Pi GPIO14/TXD, GND <-> GND
@@ -81,6 +84,7 @@ const uint8_t PIN_LCD_D4 = 32, PIN_LCD_D5 = 33, PIN_LCD_D6 = 14, PIN_LCD_D7 = 15
 const uint8_t PIN_SERVO[ANZAHL_KAMMERN] = {25, 26, 27};
 const uint8_t PIN_LED_GRUEN = 16;
 const uint8_t PIN_LED_ROT   = 17;
+const uint8_t PIN_LED_LEER[ANZAHL_KAMMERN] = {18, 19, 23};  // am Einfüllstutzen, an = Kammer leer
 const uint8_t PIN_MIKRO     = 34;  // ADC1, reiner Eingang
 const uint8_t PIN_PI_TX     = 2;
 const uint8_t PIN_PI_RX     = 39;  // reiner Eingang
@@ -126,6 +130,11 @@ void anzeigen(const char* zeile1, const char* zeile2) {
 void leds(bool gruen, bool rot) {
   digitalWrite(PIN_LED_GRUEN, gruen ? HIGH : LOW);
   digitalWrite(PIN_LED_ROT, rot ? HIGH : LOW);
+}
+
+/** Leer-LED einer Kammer an oder aus. Ohne Wirkung, solange der RFID-Leser diese Pins braucht. */
+void leerLed(uint8_t kammer, bool leer) {
+  if (!RFID_AUF_ESP) digitalWrite(PIN_LED_LEER[kammer], leer ? HIGH : LOW);
 }
 
 /** Wartebildschirm. */
@@ -343,7 +352,7 @@ void hilfe() {
   Serial.println();
   Serial.println("=== PillCard Demo ===");
   Serial.println("AUFTRAG 17 K1=1 K3=2 | MELDUNG schon_genommen 18:00");
-  Serial.println("mikro | probe 1-3 | schwelle 250 | servo 1 45 | reset | ?");
+  Serial.println("mikro | probe 1-3 | schwelle 250 | servo 1 45 | leer 0 1 0 | reset | ?");
   Serial.printf("Mikrofon-Schwelle %d, Fenster %u ms, erste %u ms zaehlen nicht, %u Versuche\n",
                 MIC_SCHWELLE, MIC_FENSTER_MS, MIC_IGNORIEREN_MS, VERSUCHE);
   for (uint8_t i = 0; i < ANZAHL_NUTZER; i++) {
@@ -382,6 +391,15 @@ void befehlAusfuehren(String zeile) {
     if (kammer < 1 || kammer > ANZAHL_KAMMERN || grad < 0 || grad > 180) { Serial.println("z. B. servo 1 45"); return; }
     servoWinkel(kammer - 1, grad);
     Serial.printf("Servo Kammer %d -> %d Grad (bleibt angesteuert bis zur naechsten Ausgabe)\n", kammer, grad);
+  } else if (klein.startsWith("leer")) {
+    int leer[ANZAHL_KAMMERN] = {0, 0, 0};
+    if (sscanf(klein.c_str(), "leer %d %d %d", &leer[0], &leer[1], &leer[2]) != ANZAHL_KAMMERN) {
+      Serial.println("z. B. leer 0 1 0");
+      return;
+    }
+    for (uint8_t k = 0; k < ANZAHL_KAMMERN; k++) leerLed(k, leer[k] != 0);
+    Serial.printf("Leer-LEDs: K1 %s, K2 %s, K3 %s\n",
+                  leer[0] ? "an" : "aus", leer[1] ? "an" : "aus", leer[2] ? "an" : "aus");
   } else if (klein == "reset") {
     for (uint8_t i = 0; i < ANZAHL_NUTZER; i++) heuteGenommen[i] = false;
     Serial.println("Alle Karten duerfen wieder.");
@@ -455,6 +473,12 @@ void setup() {
 
   pinMode(PIN_LED_GRUEN, OUTPUT);
   pinMode(PIN_LED_ROT, OUTPUT);
+  if (!RFID_AUF_ESP) {
+    for (uint8_t k = 0; k < ANZAHL_KAMMERN; k++) {
+      pinMode(PIN_LED_LEER[k], OUTPUT);
+      leerLed(k, false);  // bis der Pi meldet, welche Kammern leer sind
+    }
+  }
   analogReadResolution(12);
   analogSetPinAttenuation(PIN_MIKRO, ADC_11db);  // Messbereich bis ca. 3.3 V
 

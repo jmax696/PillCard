@@ -370,3 +370,18 @@ button.klein { padding: .35rem .8rem; font-size: .9rem; }
   .kalender td a { padding: .2rem; }
   .kalender .symbol { font-size: .85rem; }
 }
+
+/* E-Rezept: Kammer neu belegen */
+textarea, select {
+  display: block; width: 100%; margin-top: .3rem; padding: .7rem .8rem; font: inherit; font-weight: 400;
+  border: 2px solid var(--linie); border-radius: 10px; background: #fff; color: var(--text);
+}
+textarea { font-family: ui-monospace, Menlo, monospace; font-size: .85rem; resize: vertical; word-break: break-all; }
+textarea:focus, select:focus { outline: 3px solid #9cd2c3; border-color: var(--haupt); }
+.unsichtbar { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+label.knopf { margin: 0; }
+label.rezept-med { align-items: flex-start; margin-bottom: .6rem; font-weight: 400; }
+label.rezept-med input { margin-top: .25rem; flex: none; }
+label.rezept-med strong { display: block; }
+label.rezept-med small { display: block; margin: .15rem 0 .3rem; }
+.kammer-aktion { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }

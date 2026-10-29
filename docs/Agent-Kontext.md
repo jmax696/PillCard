@@ -32,7 +32,8 @@ Arduino Uno liegt als Reserve da, RC522 lief am Uno nie (0x00). Nicht mehr verfo
 
 | Funktion | Pin |
 |---|---|
-| RFID SDA(=SS) / SCK / MOSI / MISO / RST | IO5 / IO18 / IO23 / IO19 / IO4, Versorgung 3V3 vom ESP32 |
+| RFID-RC522 | hängt am Raspberry Pi; früher IO5 / IO18 / IO23 / IO19 / IO4 (nur noch in `include/Hardware.h`) |
+| Leer-LED Kammer 1 / 2 / 3 (Einfüllstutzen) | IO18 / IO19 / IO23, je über 100 Ω an GND |
 | LCD RS / E / D4 / D5 / D6 / D7 | IO22 / IO21 / IO32 / IO33 / IO14 / IO15; R/W → GND; VDD 5V; LED+ über 100 Ω an 5V; V0 über Poti B103 (10k) oder 1k nach GND |
 | Servo Kammer 1 / 2 / 3 (Signal) | IO25 / IO26 / IO27 |
 | LED grün / rot | IO16 / IO17 |

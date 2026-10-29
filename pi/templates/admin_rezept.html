@@ -1,0 +1,201 @@
+{% extends "admin_base.html" %}
+{% block titel %}E-Rezept für Kammer {{ k.nr }} – PillCard{% endblock %}
+{% block inhalt %}
+<div class="zeilenkopf">
+  <h1>Kammer {{ k.nr }} neu belegen</h1>
+  {% if k.leer %}<span class="marke-fehler">leer · LED leuchtet</span>{% endif %}
+</div>
+<p class="leise">Jetzt eingetragen: {{ k.medikament }}, {{ k.vorrat }} {{ 'Tablette' if k.vorrat == 1 else 'Tabletten' }}.</p>
+
+{% if schritt == "scannen" %}
+{% if not k.leer %}
+<div class="meldung warnung">In der Kammer liegen laut Zähler noch {{ k.vorrat }} Tabletten. Bitte erst leeren,
+  bevor ein anderes Medikament hineinkommt.</div>
+{% endif %}
+<form method="post" id="rezept-form">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="schritt" value="lesen">
+  <section class="karte">
+    <h2>1. QR-Code vom E-Rezept scannen</h2>
+    <div id="scan" class="scan">
+      <div class="scan-text">
+        <strong id="scan-titel">Foto vom QR-Code machen</strong>
+        <span class="leise" id="scan-info">Am Handy öffnet sich die Kamera. Den Code gross, gerade und scharf aufnehmen.</span>
+      </div>
+      <label class="knopf" for="foto">QR-Code fotografieren</label>
+      <input type="file" id="foto" accept="image/*" capture="environment" class="unsichtbar">
+    </div>
+    <label>Oder den Text des QR-Codes einfügen (ein USB-Scanner tippt ihn hier ein)
+      <textarea name="qr" id="qr" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off">{{ qr }}</textarea>
+    </label>
+  </section>
+  <div class="aktionen">
+    <button class="gross">Rezept lesen</button>
+    <a class="knopf zweit gross" href="{{ url_for('admin_kammern') }}">Abbrechen</a>
+  </div>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+        integrity="sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx" crossorigin="anonymous"></script>
+<script>
+(function () {
+  var foto = document.getElementById("foto"), qr = document.getElementById("qr"),
+      box = document.getElementById("scan"), titel = document.getElementById("scan-titel"),
+      info = document.getElementById("scan-info"), formular = document.getElementById("rezept-form");
+
+  function status(art, oben, unten) {
+    box.className = "scan " + art;
+    titel.textContent = oben;
+    info.textContent = unten;
+  }
+
+  function gefunden(text) {
+    qr.value = text;
+    status("ok", "QR-Code gelesen", "Das Rezept wird geöffnet …");
+    formular.submit();
+  }
+
+  // Handyfotos sind gross: in mehreren Grössen probieren, bis jsQR den Code findet
+  function mitJsQR(bild) {
+    if (!window.jsQR) return null;
+    var groesser = Math.max(bild.naturalWidth, bild.naturalHeight), probiert = [];
+    var ziele = [1600, 1000, 2400, 700];
+    for (var i = 0; i < ziele.length; i++) {
+      var f = Math.min(1, ziele[i] / groesser);
+      if (probiert.indexOf(f) >= 0) continue;
+      probiert.push(f);
+      var w = Math.round(bild.naturalWidth * f), h = Math.round(bild.naturalHeight * f);
+      var leinwand = document.createElement("canvas");
+      leinwand.width = w;
+      leinwand.height = h;
+      var ctx = leinwand.getContext("2d");
+      ctx.drawImage(bild, 0, 0, w, h);
+      var code = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: "attemptBoth" });
+      if (code && code.data) return code.data;
+    }
+    return null;
+  }
+
+  function nichtGefunden() {
+    status("fehler", "Kein QR-Code erkannt", window.jsQR
+      ? "Näher heran, gerade halten, gutes Licht, dann noch einmal fotografieren."
+      : "Die Lese-Hilfe konnte nicht laden (kein Internet?). Den Text des QR-Codes unten einfügen.");
+  }
+
+  function lesen(datei) {
+    status("wartet", "Suche den QR-Code …", "Einen Moment.");
+    var adresse = URL.createObjectURL(datei), bild = new Image();
+    bild.onerror = function () { status("fehler", "Bild nicht lesbar", "Bitte noch einmal fotografieren."); };
+    bild.onload = function () {
+      function mitBibliothek() {
+        var text = mitJsQR(bild);
+        URL.revokeObjectURL(adresse);
+        if (text) gefunden(text); else nichtGefunden();
+      }
+      // Android-Chrome kann QR-Codes selbst lesen, das ist schneller
+      var leser = null;
+      try { if ("BarcodeDetector" in window) leser = new BarcodeDetector({ formats: ["qr_code"] }); } catch (e) {}
+      if (!leser) { mitBibliothek(); return; }
+      leser.detect(bild).then(function (codes) {
+        if (codes.length && codes[0].rawValue) { URL.revokeObjectURL(adresse); gefunden(codes[0].rawValue); }
+        else mitBibliothek();
+      }).catch(mitBibliothek);
+    };
+    bild.src = adresse;
+  }
+
+  foto.addEventListener("change", function () {
+    if (foto.files && foto.files[0]) lesen(foto.files[0]);
+    foto.value = "";
+  });
+})();
+</script>
+
+{% else %}
+{% set p = rezept.patient %}
+<form method="post">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="schritt" value="speichern">
+  <input type="hidden" name="qr" value="{{ qr }}">
+
+  <section class="karte">
+    <h2>Rezept</h2>
+    <p>{{ rezept.art }} für <strong>{{ p.vorname }} {{ p.nachname }}</strong>
+      {%- if p.geburtsdatum %}, geb. {{ p.geburtsdatum[8:10] }}.{{ p.geburtsdatum[5:7] }}.{{ p.geburtsdatum[:4] }}{% endif %}
+      {%- if rezept.ausgestellt %} · ausgestellt am {{ rezept.ausgestellt[8:10] }}.{{ rezept.ausgestellt[5:7] }}.{{ rezept.ausgestellt[:4] }}{% endif %}
+      {%- if rezept.arzt %} · {{ rezept.arzt }}{% endif %}</p>
+    {% if rezept.bemerkung %}<p class="leise">{{ rezept.bemerkung }}</p>{% endif %}
+    <p class="leise">Die Signatur des E-Rezepts prüft der Prototyp nicht.</p>
+  </section>
+
+  <section class="karte">
+    <h2>2. Welches Medikament kommt in Kammer {{ k.nr }}?</h2>
+    {% set gewaehlt = (werte.med if werte else "0") %}
+    {% for m in rezept.medikamente %}
+    {% set vorschlag_tag = m.pro_tag_ganz if (m.pro_tag_ganz is not none and not m.reserve) else 0 %}
+    <label class="wahl rezept-med">
+      <input type="radio" name="med" value="{{ loop.index0 }}" data-name="{{ m.name }}" data-pro-tag="{{ vorschlag_tag }}"
+             {{ 'checked' if gewaehlt == loop.index0|string }}>
+      <span>
+        <strong>{{ m.name or (m.id_typ ~ ' ' ~ m.id) }}</strong>
+        <small class="leise">
+          {%- if m.dosis_text %}{{ m.dosis_text }} (morgens – mittags – abends – nachts) · {% endif -%}
+          {{ '%g'|format(m.pro_tag) }} {{ m.einheit or 'Stück' }} pro Tag
+          {%- if m.grund %} · {{ m.grund }}{% endif %}
+          {%- if m.anwendung %} · {{ m.anwendung }}{% endif %}
+          {%- if m.bis %} · bis {{ m.bis[8:10] }}.{{ m.bis[5:7] }}.{{ m.bis[:4] }}{% endif %}
+        </small>
+        {% for h in m.hinweise %}<span class="marke-warn">{{ h }}</span> {% endfor %}
+      </span>
+    </label>
+    {% endfor %}
+  </section>
+
+  {% set erstes = rezept.medikamente[gewaehlt|int] if gewaehlt|int < rezept.medikamente|length else rezept.medikamente[0] %}
+  <section class="karte">
+    <h2>3. Kammer {{ k.nr }} programmieren</h2>
+    <div class="spalten">
+      <label>Name des Medikaments
+        <input name="medikament" id="medikament" required maxlength="40"
+               placeholder="steht auf der Packung" value="{{ werte.medikament if werte else erstes.name }}">
+      </label>
+      <label>Tabletten pro Tag
+        <input name="pro_tag" id="pro_tag" type="number" min="0" max="{{ max_pro_kammer }}" required
+               value="{{ werte.pro_tag if werte else (erstes.pro_tag_ganz if (erstes.pro_tag_ganz is not none and not erstes.reserve) else 0) }}">
+      </label>
+      <label>Eingefüllt (Tabletten)
+        <input name="vorrat" type="number" min="1" required value="{{ werte.vorrat if werte else '' }}">
+      </label>
+      <label>Für
+        <select name="nutzer" required>
+          <option value="">bitte wählen</option>
+          {% for n in nutzer %}<option value="{{ n.id }}" {{ 'selected' if n.id == vorschlag }}>{{ n.name }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    {% if not vorschlag %}<p><span class="marke-warn">Kein Nutzer heisst wie im Rezept, bitte selbst wählen.</span></p>{% endif %}
+    <p class="leise">Die Pläne aller anderen Nutzer für Kammer {{ k.nr }} ({{ k.medikament }}) werden entfernt, weil dort
+      jetzt ein anderes Medikament liegt. Selbst anpassen ist für Medikamente vom Rezept aus.</p>
+  </section>
+
+  <div class="aktionen">
+    <button class="gross">Kammer {{ k.nr }} programmieren</button>
+    <a class="knopf zweit gross" href="{{ url_for('kammer_rezept', nr=k.nr) }}">Anderes Rezept scannen</a>
+  </div>
+</form>
+
+<script>
+(function () {
+  // Bei einem anderen Medikament Name und Menge aus dem Rezept übernehmen
+  var name = document.getElementById("medikament"), proTag = document.getElementById("pro_tag");
+  document.querySelectorAll("input[name=med]").forEach(function (r) {
+    r.addEventListener("change", function () {
+      name.value = r.dataset.name || "";
+      proTag.value = r.dataset.proTag || 0;
+      if (!name.value) name.focus();
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

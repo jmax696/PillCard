@@ -29,6 +29,8 @@ AUFTRAG_GRUND = 20     # s Grundzeit für einen Auftrag ...
 PRO_TABLETTE = 5       # ... plus so viel pro Tablette (Servo, Hinhören, zweiter Versuch)
 KARTE_SPERRE = 3       # s, so lange zählt dieselbe Karte nicht noch einmal
 LESER_PRUEFEN = 2      # s, so oft wird ohne Karte geprüft, ob der RC522 noch richtig eingestellt ist
+LEER_PRUEFEN = 2       # s, so oft wird nachgesehen, ob eine Kammer leer ist oder nachgefüllt wurde
+LEER_AUFFRISCHEN = 30  # s, so oft geht der Leer-Status auch ohne Änderung raus (falls der ESP32 neu gestartet ist)
 RF_CFG, TX_CONTROL, VERSION = 0x26, 0x14, 0x37   # Register des RC522
 VERSTAERKUNG = 0x70    # RFCfgReg: Antennenverstärkung auf Maximum (48 dB), hilft bei kleinen Chips
 ANTWORTEN = ("BEREIT", "OK", "TABLETTE", "FERTIG", "FEHLER")
@@ -52,9 +54,14 @@ class Esp:
                 break
         self.seriell.reset_input_buffer()
 
-    def senden(self, zeile):
-        print(f"  -> ESP32: {zeile}")
+    def senden(self, zeile, leise=False):
+        if not leise:
+            print(f"  -> ESP32: {zeile}")
         self.seriell.write((zeile + "\n").encode())
+
+    def leer_zeigen(self, leer, leise=False):
+        """Schaltet die LEDs an den Einfüllstutzen, z. B. [False, True, False] -> "LEER 0 1 0"."""
+        self.senden("LEER " + " ".join("1" if k else "0" for k in leer), leise)
 
     def zeile_lesen(self):
         """Eine Zeile vom ESP32; Hilfstexte für den Seriellen Monitor werden übersprungen."""
@@ -80,6 +87,30 @@ class Esp:
                 return {int(t[1:].split("=")[0]): int(t.split("=")[1]) for t in zeile[2:]}
         print("  !! ESP32 hat nicht rechtzeitig FERTIG gemeldet")
         return None
+
+
+class LeerAnzeige:
+    """Hält die LEDs an den Einfüllstutzen auf dem Stand der Datenbank (Vorrat 0 = LED an).
+    Fragt nur alle LEER_PRUEFEN Sekunden nach, damit auch Nachfüllen über die Website ankommt."""
+
+    def __init__(self, esp, db):
+        self.esp, self.db = esp, db
+        self.zuletzt, self.gesendet, self.geprueft = None, 0.0, 0.0
+
+    def pruefen(self, sofort=False):
+        if not self.esp or (not sofort and time.time() - self.geprueft < LEER_PRUEFEN):
+            return
+        self.geprueft = time.time()
+        leer = datenbank.leere_kammern(self.db)
+        if leer != self.zuletzt:
+            namen = ", ".join(f"K{nr}" for nr, ist_leer in enumerate(leer, 1) if ist_leer) or "keine"
+            print(f"[{jetzt():%H:%M:%S}] Leere Kammern: {namen}", flush=True)
+            self.esp.leer_zeigen(leer)
+        elif time.time() - self.gesendet > LEER_AUFFRISCHEN:
+            self.esp.leer_zeigen(leer, leise=True)
+        else:
+            return
+        self.zuletzt, self.gesendet = leer, time.time()
 
 
 def leser_einrichten(leser):
@@ -167,6 +198,8 @@ def main():
     leser = MFRC522()  # SPI0, RST an Pin 22 (GPIO25)
     leser_einrichten(leser)
     esp = None if args.uids else Esp()
+    leer = LeerAnzeige(esp, db)
+    leer.pruefen(sofort=True)
     print("Bereit, Karte hinhalten ... (Strg+C beendet)")
 
     letzte_uid, letzte_zeit = None, 0.0
@@ -183,6 +216,7 @@ def main():
                               "richte ihn neu ein" + (" – keine Antwort, Kabel prüfen" if version in (0, 0xFF) else ""),
                               flush=True)
                         leser_einrichten(leser)
+                leer.pruefen()
                 time.sleep(0.1)
                 continue
             # Liegt die Karte noch auf, zählt sie nicht noch einmal
@@ -196,6 +230,7 @@ def main():
                 print(f"UID {uid}  ({nutzer['name'] if nutzer else 'unbekannt'})", flush=True)
             else:
                 karte_bearbeiten(uid, esp, db)
+                leer.pruefen(sofort=True)  # nach einer Ausgabe kann eine Kammer leer geworden sein
             letzte_zeit = time.time()
     except KeyboardInterrupt:
         print("\nBeendet.")
