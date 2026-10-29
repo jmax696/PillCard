@@ -7,6 +7,18 @@
   <a class="knopf" href="{{ url_for('kalender', monat=nachher) }}" aria-label="nächster Monat">›</a>
 </div>
 
+<p class="bilanz">
+  <span>
+  {%- if bilanz.tage %}
+    An <strong>{{ bilanz.abgeholt }} von {{ bilanz.tage }}</strong> Tagen abgeholt
+    {%- if bilanz.probleme %}, davon {{ bilanz.probleme }} mit Problem am Gerät{% endif %}.
+  {%- else %}
+    In diesem Monat gibt es noch keine Einträge.
+  {%- endif -%}
+  </span>
+  {% if not ist_aktuell %}<a class="knopf klein zweit" href="{{ url_for('kalender') }}">Zum aktuellen Monat</a>{% endif %}
+</p>
+
 <table class="kalender">
   <thead><tr>{% for t in wochentage %}<th>{{ t }}</th>{% endfor %}</tr></thead>
   <tbody>
@@ -16,7 +28,7 @@
       {% set e = tag.eintrag %}
       <td class="{{ '' if tag.im_monat else 'fremd' }} {{ 'heute' if tag.heute }} {{ e.status if e }}
                  {{ 'gewaehlt' if gewaehlt == tag.datum.isoformat() }}">
-        <a href="{{ url_for('kalender', monat=monat, tag=tag.datum.isoformat()) }}">
+        <a href="{{ url_for('kalender', monat=monat, tag=tag.datum.isoformat()) }}#details">
           <span class="nr">{{ tag.datum.day }}</span>
           {% if e %}
             <span class="symbol">
@@ -34,22 +46,16 @@
   </tbody>
 </table>
 
-<ul class="legende">
-  <li><span class="punkt ok"></span>genommen (Zahl = Tabletten)</li>
-  <li><span class="punkt teil"></span>weniger ausgegeben als geplant</li>
-  <li><span class="punkt fehler"></span>Fehler am Gerät</li>
-  <li><span class="punkt verpasst"></span>nicht abgeholt</li>
-</ul>
-
 {% if gewaehlt %}
-<section class="karte">
-  <h2>{{ gewaehlt[8:10] }}.{{ gewaehlt[5:7] }}.{{ gewaehlt[:4] }}</h2>
+<section class="karte" id="details">
+  <h2>{{ gewaehlt_lang }}</h2>
   <ul class="liste">
   {% for a in details %}
-    <li>{{ a.zeit|datum }} Uhr · {{ a.medikament }}
+    <li><span>{{ a.zeit|datum }} Uhr · {{ a.medikament }}</span>
       <span class="rechts">
-        {% if a.erhalten is none %}<span class="marke-fehler">Fehler</span>
-        {% else %}{{ a.erhalten }} von {{ a.bestellt }}{% endif %}
+        {% if a.erhalten is none %}<span class="marke-fehler">⚠ Fehler</span>
+        {% elif a.erhalten < a.bestellt %}<span class="marke-warn">! {{ a.erhalten }} von {{ a.bestellt }}</span>
+        {% else %}{{ a.erhalten }}×{% endif %}
       </span>
     </li>
   {% else %}
@@ -57,5 +63,14 @@
   {% endfor %}
   </ul>
 </section>
+{% else %}
+<p class="leise">Tippen Sie auf einen Tag, um zu sehen, was es gab.</p>
 {% endif %}
+
+<ul class="legende">
+  <li><span class="punkt ok"></span>✓ genommen (Zahl = Tabletten)</li>
+  <li><span class="punkt teil"></span>! weniger ausgegeben als geplant</li>
+  <li><span class="punkt fehler"></span>⚠ Fehler am Gerät</li>
+  <li><span class="punkt verpasst"></span>– nicht abgeholt</li>
+</ul>
 {% endblock %}

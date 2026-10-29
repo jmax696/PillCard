@@ -21,19 +21,50 @@ Aussehen in `pi/static/style.css`. Kein Internet nötig, alles liegt auf dem Pi.
 - **Bearbeiten:** Name, Karte (neu scannen), Passwort, Dosierung; Nutzer löschen.
 - **Kammern:** Medikament, ob Nutzer selbst anpassen dürfen und bis zu welcher Menge
   („Selbst anpassen bis“), Vorrat, Nachfüllen (+), Warnschwelle.
-- **Heute zurücksetzen** (für die Demo): löscht die heutigen Ausgaben.
+- **Heute zurücksetzen** (für die Demo): löscht die heutigen Ausgaben. Gibt es auf der Übersicht
+  und im Demo-Dashboard.
+
+## Demo-Dashboard – `/admin/demo`
+
+Für Präsentation und Beamer, nur mit dem Passwort der Verwaltung. Die Seite holt sich alle
+2 Sekunden neue Daten (`/admin/demo/daten`, JSON, liest nur) und muss nicht neu geladen werden.
+
+- **Kopf:** Datum, Uhr, „live“-Anzeige (rot, wenn die Website nicht erreichbar ist), Knopf
+  **Vollbild** und **Heute zurücksetzen**.
+- **Neue Ausgabe:** Hält jemand die Karte ans Gerät, erscheint oben ein großer Hinweis, z. B.
+  „Anna hat um 08:12 Uhr 4 Tabletten bekommen“ (gelb bei weniger als geplant, rot bei Fehler am
+  Gerät). Läuft gerade ein Anlernen, steht dort „der Leser wartet auf eine neue Karte“.
+- **Kennzahlen:** heute abgeholt (x von y Nutzern mit Plan), Tabletten heute (laut Mikrofon),
+  abgeholt in den letzten 7 Tagen (Anteil der Tage ab der ersten Ausgabe des Nutzers),
+  Gerätefehler heute.
+- **Nutzer heute:** Status mit Uhrzeit, heutige Dosis (angepasste Mengen markiert), die letzten
+  7 Tage als Leiste.
+- **Letzte Ausgaben:** die letzten 7 Ausgaben mit Zeit, Nutzer, Mengen und Ergebnis.
+- **Tabletten pro Tag:** Säulen für die letzten 14 Tage, Wert beim Zeigen mit Maus oder Tab-Taste,
+  darunter „Als Tabelle“.
+- **Vorrat:** pro Kammer Anzahl, Balken für „reicht noch N Tage“ (voll = 30 Tage, Strich =
+  Warnschwelle) und „bald leer“.
 
 ## Nutzerbereich – `/`
 
-- Login mit Benutzername und Passwort (vergibt die Verwaltung).
-- **Heute:** ob schon ausgegeben wurde und wie viel aus jeder Kammer; sonst, was es heute gibt.
-- **Vorratswarnung:** gelber Hinweis, wenn eine seiner Kammern knapp wird.
-- **Dosis nach Tagesform:** anpassbare Medikamente mit − / + zwischen 0 und „Selbst anpassen bis“
-  (liegt die verordnete Menge höher, bis zu ihr), für
-  heute oder morgen. Nach dem Speichern bestätigt die Seite, was es geben wird. Ist heute schon
-  ausgegeben, geht nur noch „Morgen“.
+- Login mit Benutzername und Passwort (vergibt die Verwaltung). Die aktuelle Seite ist in der
+  Navigation unterstrichen.
+- **Heute** – von oben nach unten nach Wichtigkeit:
+  1. Begrüßung mit Tageszeit und Datum.
+  2. **Große Statuskarte:** „Ihre Tabletten liegen bereit – Karte ans Gerät halten“ mit der heutigen
+     Menge (angepasste Mengen markiert), „Heute erledigt“ mit Uhrzeit, „weniger als geplant“ (gelb)
+     oder „Das Gerät hat einen Fehler gemeldet“ (rot), jeweils mit Symbol und Text.
+  3. **Vorratswarnung:** gelber Hinweis, wenn eine seiner Kammern knapp wird.
+  4. **Morgen:** was es morgen gibt, angepasste Mengen markiert.
+  5. **Letzte 7 Tage:** Leiste mit ✓ / ! / ⚠ / – pro Tag, Link zum Kalender.
+  6. **Dosis nach Tagesform:** anpassbare Medikamente mit − / + zwischen 0 und „Selbst anpassen bis“
+     (liegt die verordnete Menge höher, bis zu ihr), für heute oder morgen. Weicht der Wert vom
+     normalen Plan ab, steht „geändert“ daneben. Nach dem Speichern bestätigt die Seite, was es
+     geben wird. Ist heute schon ausgegeben, geht nur noch „Morgen“.
 - **Kalender:** Monatsansicht, pro Tag ✓ mit Anzahl Tabletten, ! wenn weniger kam als geplant,
-  ⚠ bei Fehler am Gerät, grau für nicht abgeholt. Ein Tag lässt sich antippen für die Details.
+  ⚠ bei Fehler am Gerät, – (grau) für nicht abgeholt. Oben die Bilanz des Monats („an 26 von 29
+  Tagen abgeholt“) und, in anderen Monaten, „Zum aktuellen Monat“. Ein Tag lässt sich antippen;
+  die Details erscheinen direkt unter dem Kalender.
 
 ## Betrieb auf dem Pi
 
@@ -41,6 +72,13 @@ Aussehen in `pi/static/style.css`. Kein Internet nötig, alles liegt auf dem Pi.
 cd ~/pillcard
 venv/bin/pip install flask waitress     # einmalig
 ./web.sh &                              # Website mit Neustart-Schleife, Ausgaben in web.log
+```
+
+Lokal am Mac testen (ohne Pi und Kartenleser): Flask und waitress in eine eigene venv, dann mit
+einer Test-Datenbank starten – die UID beim Anlernen von Hand eintragen.
+
+```bash
+PILLCARD_DB=/tmp/test.db python pi/web.py --debug --port 8080
 ```
 
 Autostart: in `crontab -e` die Zeile `@reboot /home/admin/pillcard/web.sh` ergänzen

@@ -12,8 +12,8 @@
     <nav>
       {% block nav %}
       {% if angemeldet %}
-        <a href="{{ url_for('mein') }}">Heute</a>
-        <a href="{{ url_for('kalender') }}">Kalender</a>
+        <a href="{{ url_for('mein') }}" {{ 'aria-current=page' if request.endpoint == 'mein' }}>Heute</a>
+        <a href="{{ url_for('kalender') }}" {{ 'aria-current=page' if request.endpoint == 'kalender' }}>Kalender</a>
         <form method="post" action="{{ url_for('logout') }}" class="inline">
           <input type="hidden" name="csrf" value="{{ csrf }}">
           <button class="link">Abmelden</button>
@@ -23,7 +23,7 @@
     </nav>
   </header>
 
-  <main>
+  <main class="{% block breite %}{% endblock %}">
     {% with meldungen = get_flashed_messages(with_categories=true) %}
       {% for art, text in meldungen %}
         <div class="meldung {{ art }}" role="{{ 'alert' if art == 'fehler' else 'status' }}">{{ text }}</div>

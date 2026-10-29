@@ -47,11 +47,15 @@
 
 <section class="karte flach demo">
   <h2>Demo</h2>
-  <p class="leise">Löscht die heutigen Ausgaben, danach dürfen alle heute noch einmal.</p>
-  <form method="post" action="{{ url_for('admin_reset') }}"
-        onsubmit="return confirm('Alle heutigen Ausgaben löschen?')">
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    <button class="zweit">Heute zurücksetzen</button>
-  </form>
+  <p class="leise">Das Live-Dashboard zeigt alles auf einen Blick und aktualisiert sich selbst – gut für Beamer
+    oder Präsentation. „Heute zurücksetzen“ löscht die heutigen Ausgaben, danach dürfen alle heute noch einmal.</p>
+  <div class="aktionen">
+    <a class="knopf" href="{{ url_for('demo') }}">Live-Dashboard öffnen</a>
+    <form method="post" action="{{ url_for('admin_reset') }}" class="inline"
+          onsubmit="return confirm('Alle heutigen Ausgaben löschen?')">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="zweit">Heute zurücksetzen</button>
+    </form>
+  </div>
 </section>
 {% endblock %}

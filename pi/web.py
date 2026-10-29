@@ -2,6 +2,7 @@
 
 Verwaltung (/admin): neue Karten anlernen, Nutzer und Dosierung bearbeiten, Kammern und Vorrat.
 Nutzerbereich (/):   Login, heutige Dosis je nach Tagesform anpassen, Kalender, Vorratswarnung.
+Demo (/admin/demo):  Live-Dashboard für die Präsentation, holt sich alle 2 s neue Daten.
 
 Beide Teile arbeiten auf derselben pillcard.db wie pillcard.py.
 
@@ -32,6 +33,8 @@ MAX_PRO_KAMMER = 9   # mehr gibt der ESP32 pro Kammer und Auftrag nicht aus (MAX
 MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
           "August", "September", "Oktober", "November", "Dezember"]
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+WOCHENTAGE_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
+DEMO_AKTUALISIEREN = 2   # s, so oft holt das Demo-Dashboard neue Daten
 
 
 def geheimer_schluessel():
@@ -115,6 +118,46 @@ def medikamente(nutzer_id):
             m[tag] = min(m[tag], m["grenze"]) if m["anpassbar"] and m[tag] is not None else m["plan"]
         zeilen.append(m)
     return zeilen
+
+
+def tagesstatus(nutzer_id, von, bis):
+    """Status je Tag von..bis (inkl.): {'2026-10-29': {'erhalten': 4, 'status': 'ok'}}.
+    status: ok, teil (weniger als bestellt), fehler (Gerät hat nicht geantwortet) oder verpasst
+    (keine Ausgabe, seit der ersten Ausgabe überhaupt und vor heute). Tage ohne Angabe fehlen."""
+    tage = {}
+    for r in db().execute(
+            """SELECT DATE(zeit) AS tag, SUM(bestellt) AS bestellt, SUM(COALESCE(erhalten, 0)) AS erhalten,
+                      SUM(erhalten IS NULL) AS fehler
+               FROM ausgaben WHERE nutzer_id = ? AND DATE(zeit) BETWEEN ? AND ? GROUP BY tag""",
+            (nutzer_id, von.isoformat(), bis.isoformat())):
+        status = "fehler" if r["fehler"] else ("teil" if r["erhalten"] < r["bestellt"] else "ok")
+        tage[r["tag"]] = {"erhalten": r["erhalten"], "status": status}
+
+    beginn = db().execute("SELECT MIN(DATE(zeit)) FROM ausgaben WHERE nutzer_id = ?", (nutzer_id,)).fetchone()[0]
+    if beginn:
+        d = max(von, datetime.date.fromisoformat(beginn))
+        while d <= bis and d < heute():
+            tage.setdefault(d.isoformat(), {"erhalten": 0, "status": "verpasst"})
+            d += datetime.timedelta(days=1)
+    return tage
+
+
+def woche(nutzer_id):
+    """Die letzten 7 Tage bis heute, für die Wochenleiste."""
+    erster = heute() - datetime.timedelta(days=6)
+    tage = tagesstatus(nutzer_id, erster, heute())
+    return [{"datum": d, "wt": WOCHENTAGE[d.weekday()], "heute": d == heute(),
+             "eintrag": tage.get(d.isoformat())}
+            for d in (erster + datetime.timedelta(days=i) for i in range(7))]
+
+
+def datum_lang(d):
+    return f"{WOCHENTAGE_LANG[d.weekday()]}, {d.day}. {MONATE[d.month - 1]} {d.year}"
+
+
+def gruss():
+    stunde = datetime.datetime.now().hour
+    return "Guten Morgen" if stunde < 11 else ("Guten Abend" if stunde >= 18 else "Guten Tag")
 
 
 def plan_text(nutzer_id):
@@ -206,9 +249,24 @@ def mein():
            JOIN kammern k ON k.nr = a.kammer
            WHERE a.nutzer_id = ? AND DATE(a.zeit) = ? ORDER BY a.zeit, a.kammer""",
         (n["id"], heute().isoformat())).fetchall()
+
+    # Was oben in der großen Karte steht
+    if genommen_um:
+        if any(a["erhalten"] is None for a in heute_ausgaben):
+            zustand = "fehler"
+        elif any(a["erhalten"] < a["bestellt"] for a in heute_ausgaben):
+            zustand = "teil"
+        else:
+            zustand = "erledigt"
+    else:
+        zustand = "offen" if any(m["heute"] > 0 for m in meds) else "nichts"
+
+    morgen = heute() + datetime.timedelta(days=1)
     return render_template("mein.html", nutzer=n, genommen_um=genommen_um, meds=meds, knapp=knapp,
-                           heute_ausgaben=heute_ausgaben,
-                           anpassbar=[m for m in meds if m["anpassbar"]])
+                           heute_ausgaben=heute_ausgaben, zustand=zustand, gruss=gruss(),
+                           datum_heute=datum_lang(heute()), datum_morgen=f"{morgen:%d.%m.}",
+                           wochentag_morgen=WOCHENTAGE_LANG[morgen.weekday()],
+                           woche=woche(n["id"]), anpassbar=[m for m in meds if m["anpassbar"]])
 
 
 @app.route("/mein/anpassen", methods=["POST"])
@@ -250,30 +308,21 @@ def kalender():
     except ValueError:
         erster = heute().replace(day=1)
 
-    # Ausgaben des Monats pro Tag zusammenfassen
-    tage = {}
-    for r in db().execute(
-            """SELECT DATE(zeit) AS tag, SUM(bestellt) AS bestellt, SUM(COALESCE(erhalten, 0)) AS erhalten,
-                      SUM(erhalten IS NULL) AS fehler
-               FROM ausgaben WHERE nutzer_id = ? AND STRFTIME('%Y-%m', zeit) = ? GROUP BY tag""",
-            (n["id"], f"{erster:%Y-%m}")):
-        status = "fehler" if r["fehler"] else ("teil" if r["erhalten"] < r["bestellt"] else "ok")
-        tage[r["tag"]] = {"erhalten": r["erhalten"], "status": status}
+    gitter = calendar.Calendar().monthdatescalendar(erster.year, erster.month)
+    tage = tagesstatus(n["id"], gitter[0][0], gitter[-1][-1])
+    wochen = [[{"datum": d, "im_monat": d.month == erster.month, "heute": d == heute(),
+                "eintrag": tage.get(d.isoformat())} for d in w] for w in gitter]
 
-    # Tage ohne Ausgabe seit der ersten Ausgabe überhaupt gelten als verpasst
-    beginn = db().execute("SELECT MIN(DATE(zeit)) FROM ausgaben WHERE nutzer_id = ?", (n["id"],)).fetchone()[0]
-    wochen = []
-    for woche in calendar.Calendar().monthdatescalendar(erster.year, erster.month):
-        zeile = []
-        for d in woche:
-            eintrag = tage.get(d.isoformat())
-            if not eintrag and beginn and beginn <= d.isoformat() and d < heute():
-                eintrag = {"erhalten": 0, "status": "verpasst"}
-            zeile.append({"datum": d, "im_monat": d.month == erster.month, "heute": d == heute(),
-                          "eintrag": eintrag})
-        wochen.append(zeile)
+    # Kurz-Bilanz des Monats: an wie vielen Tagen abgeholt
+    im_monat = [e for tag, e in tage.items() if tag.startswith(f"{erster:%Y-%m}")]
+    bilanz = {"abgeholt": sum(e["status"] != "verpasst" for e in im_monat), "tage": len(im_monat),
+              "probleme": sum(e["status"] in ("teil", "fehler") for e in im_monat)}
 
     gewaehlt = request.args.get("tag")
+    try:
+        datetime.date.fromisoformat(gewaehlt or "")
+    except ValueError:
+        gewaehlt = None
     details = []
     if gewaehlt:
         details = db().execute(
@@ -287,7 +336,9 @@ def kalender():
     return render_template("kalender.html", nutzer=n, wochen=wochen, wochentage=WOCHENTAGE,
                            titel=f"{MONATE[erster.month - 1]} {erster.year}", monat=f"{erster:%Y-%m}",
                            vorher=f"{vorher:%Y-%m}", nachher=f"{nachher:%Y-%m}",
-                           gewaehlt=gewaehlt, details=details)
+                           gewaehlt=gewaehlt, details=details, bilanz=bilanz,
+                           ist_aktuell=erster == heute().replace(day=1),
+                           gewaehlt_lang=datum_lang(datetime.date.fromisoformat(gewaehlt)) if gewaehlt else "")
 
 
 # ---------- Verwaltung ----------
@@ -490,7 +541,82 @@ def admin_kammern():
 def admin_reset():
     anzahl = datenbank.heute_zuruecksetzen(db())
     flash(f"Heutige Ausgaben gelöscht ({anzahl} Einträge). Alle dürfen heute wieder.", "ok")
-    return redirect(url_for("admin"))
+    return redirect(url_for("demo" if request.form.get("weiter") == "demo" else "admin"))
+
+
+# ---------- Demo-Dashboard (für Präsentation, aktualisiert sich selbst) ----------
+
+@app.route("/admin/demo")
+@admin_noetig
+def demo():
+    return render_template("demo.html", aktualisieren=DEMO_AKTUALISIEREN)
+
+
+@app.route("/admin/demo/daten")
+@admin_noetig
+def demo_daten():
+    """Alles, was das Dashboard zeigt, als JSON. Liest nur, ändert nichts."""
+    d0 = heute()
+    vor7 = d0 - datetime.timedelta(days=7)
+
+    nutzer, abgeholt7, tage7 = [], 0, 0
+    for n in db().execute("SELECT * FROM nutzer ORDER BY name"):
+        meds = medikamente(n["id"])
+        if not meds:
+            continue   # ohne Plan nichts zu zeigen
+        um = datenbank.heute_genommen_um(db(), n["id"])
+        tage = tagesstatus(n["id"], vor7, d0)
+        heute_e = tage.get(d0.isoformat())
+        if um:
+            status = heute_e["status"] if heute_e else "ok"
+        else:
+            status = "offen" if any(m["heute"] > 0 for m in meds) else "nichts"
+        letzte7 = [e for t, e in tage.items() if t < d0.isoformat()]
+        abgeholt7 += sum(e["status"] != "verpasst" for e in letzte7)
+        tage7 += len(letzte7)
+        nutzer.append({
+            "name": n["name"], "status": status, "um": um,
+            "dosis": [{"medikament": m["medikament"], "anzahl": m["heute"], "angepasst": m["heute"] != m["plan"]}
+                      for m in meds if m["heute"] > 0],
+            "woche": [{"wt": t["wt"], "nr": t["datum"].day, "heute": t["heute"],
+                       "status": t["eintrag"]["status"] if t["eintrag"] else None} for t in woche(n["id"])],
+        })
+
+    heute_summe = db().execute(
+        """SELECT COALESCE(SUM(erhalten), 0) AS tabletten,
+                  COUNT(DISTINCT CASE WHEN erhalten IS NULL THEN nutzer_id || ' ' || zeit END) AS fehler
+           FROM ausgaben WHERE DATE(zeit) = ?""", (d0.isoformat(),)).fetchone()
+
+    pro_tag = {r["tag"]: r["tabletten"] for r in db().execute(
+        """SELECT DATE(zeit) AS tag, COALESCE(SUM(erhalten), 0) AS tabletten FROM ausgaben
+           WHERE DATE(zeit) >= ? GROUP BY tag""", ((d0 - datetime.timedelta(days=13)).isoformat(),))}
+    verlauf = []
+    for i in range(13, -1, -1):
+        d = d0 - datetime.timedelta(days=i)
+        verlauf.append({"wt": WOCHENTAGE[d.weekday()], "kurz": f"{d:%d.%m.}", "heute": i == 0,
+                        "tabletten": pro_tag.get(d.isoformat(), 0)})
+
+    # Eine Ausgabe = alle Zeilen eines Nutzers mit derselben Zeit
+    ereignisse = [dict(r) for r in db().execute(
+        """SELECT MAX(a.id) AS id, n.name, a.zeit, SUM(a.bestellt) AS bestellt,
+                  SUM(COALESCE(a.erhalten, 0)) AS erhalten, SUM(a.erhalten IS NULL) AS fehler,
+                  GROUP_CONCAT(COALESCE(a.erhalten, a.bestellt) || '× ' || k.medikament, ', ') AS teile
+           FROM ausgaben a JOIN nutzer n ON n.id = a.nutzer_id JOIN kammern k ON k.nr = a.kammer
+           GROUP BY a.nutzer_id, a.zeit ORDER BY a.zeit DESC, id DESC LIMIT 7""")]
+    for e in ereignisse:
+        e["status"] = "fehler" if e["fehler"] else ("teil" if e["erhalten"] < e["bestellt"] else "ok")
+        e["uhr"] = e["zeit"][11:16]
+        e["heute"] = e["zeit"][:10] == d0.isoformat()
+        e["tag"] = "heute" if e["heute"] else f"{e['zeit'][8:10]}.{e['zeit'][5:7]}."
+
+    return jsonify(
+        uhrzeit=f"{datetime.datetime.now():%H:%M:%S}", datum=datum_lang(d0),
+        kennzahlen={"versorgt": sum(n["um"] is not None for n in nutzer), "nutzer": len(nutzer),
+                    "tabletten": heute_summe["tabletten"], "fehler": heute_summe["fehler"],
+                    "abgeholt7": round(100 * abgeholt7 / tage7) if tage7 else None},
+        nutzer=nutzer, vorrat=datenbank.vorrat_status(db()), verlauf=verlauf, ereignisse=ereignisse,
+        scan_wartet=datenbank.scan_offen(db()) is not None,
+    )
 
 
 @app.template_filter("datum")

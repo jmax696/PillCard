@@ -1,8 +1,65 @@
 {% extends "base.html" %}
 {% block titel %}Heute – PillCard{% endblock %}
 {% block inhalt %}
-<h1>Guten Tag, {{ nutzer.name }}</h1>
+<div class="begruessung">
+  <h1>{{ gruss }}, {{ nutzer.name }}</h1>
+  <p class="leise">{{ datum_heute }}</p>
+</div>
 
+{# 1. Das Wichtigste zuerst: Habe ich heute schon genommen? #}
+<section class="karte held {{ zustand }}" aria-live="polite">
+  <div class="held-kopf">
+    <span class="held-symbol" aria-hidden="true">
+      {%- if zustand == 'erledigt' %}✓{% elif zustand == 'offen' %}●{% elif zustand == 'nichts' %}–{% else %}!{% endif -%}
+    </span>
+    <div>
+      {% if zustand == 'erledigt' %}
+        <p class="held-titel">Heute erledigt</p>
+        <p class="held-text">Um {{ genommen_um }} Uhr ausgegeben. Die nächste Ausgabe gibt es morgen.</p>
+      {% elif zustand == 'teil' %}
+        <p class="held-titel">Heute ausgegeben – aber weniger als geplant</p>
+        <p class="held-text">Um {{ genommen_um }} Uhr. Bitte schauen Sie in die Schale.</p>
+      {% elif zustand == 'fehler' %}
+        <p class="held-titel">Das Gerät hat einen Fehler gemeldet</p>
+        <p class="held-text">Um {{ genommen_um }} Uhr. Bitte schauen Sie in die Schale und geben Sie
+          der Verwaltung Bescheid.</p>
+      {% elif zustand == 'offen' %}
+        <p class="held-titel">Ihre Tabletten liegen bereit</p>
+        <p class="held-text">Halten Sie Ihre Karte an das Gerät.</p>
+      {% else %}
+        <p class="held-titel">Heute gibt es keine Tabletten</p>
+        <p class="held-text">In Ihrem Plan steht für heute nichts.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if genommen_um %}
+  <ul class="liste">
+    {% for a in heute_ausgaben %}
+    <li>
+      <span>{{ a.medikament }}</span>
+      <span class="rechts">
+        {% if a.erhalten is none %}<span class="marke-fehler">⚠ Fehler am Gerät</span>
+        {% elif a.erhalten < a.bestellt %}<span class="marke-warn">! {{ a.erhalten }} von {{ a.bestellt }}</span>
+        {% else %}{{ a.erhalten }}×{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif zustand == 'offen' %}
+  <ul class="liste">
+    {% for m in meds if m.heute > 0 %}
+    <li>
+      <span>{{ m.medikament }}
+        {% if m.heute != m.plan %}<small class="marke-info">heute angepasst</small>{% endif %}</span>
+      <span class="rechts">{{ m.heute }}×</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+{# 2. Hinweise, die Handeln erfordern #}
 {% for k in knapp %}
 <div class="meldung warnung" role="alert">
   <strong>Vorrat geht zu Ende:</strong> {{ k.medikament }} – noch {{ k.vorrat }} Tabletten
@@ -11,73 +68,98 @@
 </div>
 {% endfor %}
 
-<section class="karte">
-  {% if genommen_um %}
-    <p class="status ok">✓ Heute um {{ genommen_um }} Uhr ausgegeben</p>
-    <ul class="liste">
-      {% for a in heute_ausgaben %}
+{# 3. Überblick: morgen und die letzten 7 Tage #}
+<div class="zwei-spalten">
+  <section class="karte">
+    <h2>Morgen, {{ wochentag_morgen }}</h2>
+    <ul class="liste klein">
+      {% for m in meds if m.morgen > 0 %}
       <li>
-        {{ a.medikament }}
-        <span class="rechts">
-          {% if a.erhalten is none %}<span class="marke-fehler">Fehler am Gerät</span>
-          {% elif a.erhalten < a.bestellt %}{{ a.erhalten }} von {{ a.bestellt }}
-          {% else %}{{ a.erhalten }}×{% endif %}
+        <span>{{ m.medikament }}
+          {% if m.morgen != m.plan %}<small class="marke-info">angepasst</small>{% endif %}</span>
+        <span class="rechts">{{ m.morgen }}×</span>
+      </li>
+      {% else %}
+      <li>Morgen steht nichts im Plan.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="karte">
+    <div class="zeilenkopf eng">
+      <h2>Letzte 7 Tage</h2>
+      <a class="mehr" href="{{ url_for('kalender') }}">Kalender ›</a>
+    </div>
+    <ol class="wochenleiste">
+      {% for t in woche %}
+      {% set e = t.eintrag %}
+      <li class="{{ e.status if e }} {{ 'heute' if t.heute }}">
+        <span class="wt">{{ t.wt }}</span>
+        <span class="nr">{{ t.datum.day }}.</span>
+        <span class="symbol" aria-label="
+          {%- if not e %}noch offen{% elif e.status == 'ok' %}genommen{% elif e.status == 'teil' %}weniger als geplant
+          {%- elif e.status == 'fehler' %}Fehler am Gerät{% else %}nicht abgeholt{% endif %}">
+          {%- if not e %}·{% elif e.status == 'ok' %}✓{% elif e.status == 'teil' %}!{% elif e.status == 'fehler' %}⚠{% else %}–{% endif -%}
         </span>
       </li>
       {% endfor %}
-    </ul>
-    <p class="leise">Die nächste Ausgabe gibt es morgen.</p>
-  {% else %}
-    <p class="status offen">Heute noch nicht genommen</p>
-    <p class="leise">Halten Sie Ihre Karte an das Gerät. Sie bekommen:</p>
-    <ul class="liste">
-      {% for m in meds %}
-      <li>{{ m.medikament }} <span class="rechts">{{ m.heute }}×</span></li>
-      {% else %}
-      <li>Heute steht nichts im Plan.</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-</section>
+    </ol>
+  </section>
+</div>
 
+{# 4. Selbst anpassen #}
 {% if anpassbar %}
-<section class="karte">
+<section class="karte" id="anpassen">
   <h2>Dosis nach Tagesform anpassen</h2>
+  <p class="leise">Nur für Medikamente, die Sie selbst ändern dürfen.</p>
   <form method="post" action="{{ url_for('anpassen') }}">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <fieldset class="tagwahl">
       <legend>Für welchen Tag?</legend>
       <label class="wahl"><input type="radio" name="tag" value="heute"
-        {% if genommen_um %}disabled{% else %}checked{% endif %}> Heute</label>
+        {% if genommen_um %}disabled{% else %}checked{% endif %}>
+        <span>Heute{% if genommen_um %} <small>(schon ausgegeben)</small>{% endif %}</span></label>
       <label class="wahl"><input type="radio" name="tag" value="morgen"
-        {% if genommen_um %}checked{% endif %}> Morgen</label>
+        {% if genommen_um %}checked{% endif %}> <span>Morgen <small>({{ datum_morgen }})</small></span></label>
     </fieldset>
     {% for m in anpassbar %}
     {% set aktuell = m.morgen if genommen_um else m.heute %}
-    <div class="zaehler" data-max="{{ m.grenze }}">
-      <span class="name">{{ m.medikament }}<small>normal {{ m.plan }}, höchstens {{ m.grenze }}</small></span>
-      <button type="button" class="rund" data-schritt="-1" aria-label="weniger">−</button>
+    <div class="zaehler" data-max="{{ m.grenze }}" data-plan="{{ m.plan }}">
+      <span class="name">{{ m.medikament }}
+        <small>normal {{ m.plan }}, erlaubt 0 bis {{ m.grenze }}
+          <span class="geaendert" hidden> · geändert</span></small></span>
+      <button type="button" class="rund" data-schritt="-1" aria-label="weniger {{ m.medikament }}">−</button>
       <input name="k{{ m.nr }}" type="number" min="0" max="{{ m.grenze }}" value="{{ aktuell }}"
-             data-heute="{{ m.heute }}" data-morgen="{{ m.morgen }}" inputmode="numeric">
-      <button type="button" class="rund" data-schritt="1" aria-label="mehr">+</button>
+             data-heute="{{ m.heute }}" data-morgen="{{ m.morgen }}" inputmode="numeric"
+             aria-label="Anzahl {{ m.medikament }}">
+      <button type="button" class="rund" data-schritt="1" aria-label="mehr {{ m.medikament }}">+</button>
     </div>
     {% endfor %}
     <button class="gross">Speichern</button>
   </form>
 </section>
 <script>
-  // Plus/Minus-Knöpfe und beim Tageswechsel den passenden Wert anzeigen
+  // Plus/Minus-Knöpfe, Hinweis "geändert" und beim Tageswechsel den passenden Wert anzeigen
+  function markieren(z) {
+    var feld = z.querySelector("input");
+    z.querySelector(".geaendert").hidden = (+feld.value === +z.dataset.plan);
+  }
   document.querySelectorAll(".zaehler").forEach(function (z) {
     var feld = z.querySelector("input"), max = +z.dataset.max;
     z.querySelectorAll("button").forEach(function (b) {
       b.addEventListener("click", function () {
         feld.value = Math.max(0, Math.min(max, (+feld.value || 0) + (+b.dataset.schritt)));
+        markieren(z);
       });
     });
+    feld.addEventListener("input", function () { markieren(z); });
+    markieren(z);
   });
   document.querySelectorAll("input[name=tag]").forEach(function (r) {
     r.addEventListener("change", function () {
-      document.querySelectorAll(".zaehler input").forEach(function (f) { f.value = f.dataset[r.value]; });
+      document.querySelectorAll(".zaehler").forEach(function (z) {
+        var f = z.querySelector("input"); f.value = f.dataset[r.value]; markieren(z);
+      });
     });
   });
 </script>

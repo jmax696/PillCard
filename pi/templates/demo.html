@@ -1,0 +1,237 @@
+{% extends "admin_base.html" %}
+{% block titel %}Demo – PillCard{% endblock %}
+{% block breite %}breit{% endblock %}
+{% block inhalt %}
+<div class="dash-kopf">
+  <div>
+    <h1>PillCard live</h1>
+    <p class="leise" id="d-datum">&nbsp;</p>
+  </div>
+  <div class="dash-uhr">
+    <span id="d-uhr">--:--</span>
+    <span class="live" id="d-live"><span class="live-punkt" aria-hidden="true"></span><span id="d-live-text">verbinde …</span></span>
+  </div>
+  <div class="dash-knoepfe">
+    <button type="button" class="zweit klein" id="vollbild">⛶ Vollbild</button>
+    <form method="post" action="{{ url_for('admin_reset') }}" class="inline"
+          onsubmit="return confirm('Alle heutigen Ausgaben löschen?')">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="weiter" value="demo">
+      <button class="zweit klein">Heute zurücksetzen</button>
+    </form>
+  </div>
+</div>
+
+<div id="d-ereignis" class="ereignis" role="status" hidden></div>
+<p id="d-scan" class="scan wartet dash-scan" hidden>
+  <span class="scan-text"><strong>Anlernen läuft: der Leser wartet auf eine neue Karte</strong></span>
+</p>
+
+<div class="dash-kennzahlen">
+  <div class="kennzahl"><span class="leise">Heute abgeholt</span><span class="wert" id="k-versorgt">–</span><span class="leise" id="k-versorgt-text">&nbsp;</span></div>
+  <div class="kennzahl"><span class="leise">Tabletten heute</span><span class="wert" id="k-tabletten">–</span><span class="leise">laut Mikrofon gezählt</span></div>
+  <div class="kennzahl"><span class="leise">Abgeholt, letzte 7 Tage</span><span class="wert" id="k-abgeholt">–</span><span class="leise">der geplanten Tage</span></div>
+  <div class="kennzahl" id="k-fehler-kachel"><span class="leise">Gerätefehler heute</span><span class="wert" id="k-fehler">–</span><span class="leise" id="k-fehler-text">&nbsp;</span></div>
+</div>
+
+<div class="dash-raster">
+  <section class="karte">
+    <h2>Nutzer heute</h2>
+    <div id="d-nutzer" class="dash-nutzer"><p class="leise">Lade …</p></div>
+  </section>
+
+  <section class="karte">
+    <h2>Letzte Ausgaben</h2>
+    <ol id="d-feed" class="feed"></ol>
+  </section>
+
+  <section class="karte">
+    <h2>Tabletten pro Tag – letzte 14 Tage</h2>
+    <div class="saeulen-rahmen">
+      <div id="d-verlauf" class="saeulen" role="img" aria-label="Säulendiagramm: ausgegebene Tabletten pro Tag"></div>
+      <div id="d-tooltip" class="tooltip" hidden></div>
+    </div>
+    <details class="tabellenansicht">
+      <summary>Als Tabelle</summary>
+      <table class="tabelle"><thead><tr><th>Tag</th><th>Tabletten</th></tr></thead><tbody id="d-verlauf-tabelle"></tbody></table>
+    </details>
+  </section>
+
+  <section class="karte">
+    <div class="zeilenkopf eng">
+      <h2>Vorrat</h2>
+      <a class="mehr" href="{{ url_for('admin_kammern') }}">Kammern ›</a>
+    </div>
+    <div id="d-vorrat" class="dash-vorrat"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var QUELLE = "{{ url_for('demo_daten') }}", TAKT = {{ aktualisieren }} * 1000, VOLL_TAGE = 30;
+  var STATUS = {
+    ok: ["✓", "genommen"], teil: ["!", "weniger als geplant"], fehler: ["⚠", "Fehler am Gerät"],
+    offen: ["●", "noch offen"], nichts: ["–", "heute nichts"], verpasst: ["–", "nicht abgeholt"]
+  };
+  var letzteId = null, ereignisTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(t) {
+    return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function marke(status, zusatz) {
+    var s = STATUS[status] || STATUS.nichts;
+    return '<span class="status-marke ' + status + '">' + s[0] + " " + esc(zusatz || s[1]) + "</span>";
+  }
+
+  function teile(e) { return (e.status === "fehler" ? "bestellt: " : "") + esc(e.teile); }
+
+  function nutzerZeichnen(liste) {
+    if (!liste.length) { $("d-nutzer").innerHTML = '<p class="leise">Noch niemand mit Plan angelegt.</p>'; return; }
+    $("d-nutzer").innerHTML = liste.map(function (n) {
+      var zusatz = n.um ? (STATUS[n.status] || STATUS.ok)[1] + " · " + n.um + " Uhr" : null;
+      var dosis = n.dosis.map(function (d) {
+        return '<span class="chip' + (d.angepasst ? " angepasst" : "") + '">' + d.anzahl + "× " + esc(d.medikament) +
+               (d.angepasst ? " <small>angepasst</small>" : "") + "</span>";
+      }).join("") || '<span class="leise">nichts im Plan</span>';
+      var woche = n.woche.map(function (t) {
+        var s = t.status ? STATUS[t.status] : ["·", "offen"];
+        return '<li class="' + (t.status || "") + (t.heute ? " heute" : "") + '" title="' + t.wt + " " + t.nr + ".: " + s[1] + '">' +
+               '<span class="wt">' + t.wt + '</span><span class="symbol">' + s[0] + "</span></li>";
+      }).join("");
+      return '<div class="dash-person ' + n.status + '">' +
+               '<div class="dash-person-kopf"><strong>' + esc(n.name) + "</strong>" + marke(n.status, zusatz) + "</div>" +
+               '<div class="chips">' + dosis + "</div>" +
+               '<ol class="wochenleiste mini" aria-label="letzte 7 Tage">' + woche + "</ol>" +
+             "</div>";
+    }).join("");
+  }
+
+  function feedZeichnen(liste, neuId) {
+    $("d-feed").innerHTML = liste.map(function (e) {
+      return '<li class="' + e.status + (e.heute ? " heute" : "") + (e.id === neuId ? " neu" : "") + '">' +
+               '<span class="feed-zeit"><strong>' + e.uhr + "</strong><small>" + e.tag + "</small></span>" +
+               '<span class="feed-text"><strong>' + esc(e.name) + "</strong><small>" + teile(e) + "</small></span>" +
+               marke(e.status, e.status === "ok" ? e.erhalten + " Tabl." : null) +
+             "</li>";
+    }).join("") || '<li class="leise">Noch keine Ausgaben.</li>';
+  }
+
+  function verlaufZeichnen(tage) {
+    var max = Math.max.apply(null, tage.map(function (t) { return t.tabletten; }).concat([1]));
+    var maxIndex = -1;
+    tage.forEach(function (t, i) { if (t.tabletten === max && max > 0) maxIndex = i; });
+    $("d-verlauf").innerHTML = tage.map(function (t, i) {
+      var hoehe = t.tabletten ? Math.max(3, Math.round(100 * t.tabletten / max)) : 0;
+      var beschriften = t.heute || i === maxIndex;
+      return '<div class="saeule' + (t.heute ? " heute" : "") + '" tabindex="0" data-text="' +
+               t.wt + " " + t.kurz + ": " + t.tabletten + (t.tabletten === 1 ? " Tablette" : " Tabletten") + (t.heute ? " (heute, bisher)" : "") + '">' +
+               '<div class="saeule-flaeche">' +
+                 (beschriften ? '<span class="saeule-wert" style="bottom:' + hoehe + '%">' + t.tabletten + "</span>" : "") +
+                 '<span class="saeule-balken" style="height:' + hoehe + '%"></span>' +
+               "</div>" +
+               '<span class="saeule-tag">' + (t.heute ? "heute" : t.wt) + "<br>" + t.kurz.slice(0, 3) + "</span>" +
+             "</div>";
+    }).join("");
+    $("d-verlauf-tabelle").innerHTML = tage.map(function (t) {
+      return "<tr><td>" + t.wt + " " + t.kurz + "</td><td>" + t.tabletten + "</td></tr>";
+    }).join("");
+  }
+
+  function vorratZeichnen(kammern) {
+    $("d-vorrat").innerHTML = kammern.map(function (k) {
+      var tage = k.reicht_tage, breite = tage == null ? 0 : Math.min(100, Math.round(100 * tage / VOLL_TAGE));
+      var warnTage = k.bedarf ? Math.min(100, Math.round(100 * (k.warnen_ab / k.bedarf) / VOLL_TAGE)) : null;
+      var text = k.bedarf ? k.bedarf + " pro Tag · reicht " + tage + (tage === 1 ? " Tag" : " Tage") : "von niemandem genutzt";
+      return '<div class="dash-kammer' + (k.knapp ? " knapp" : "") + '">' +
+               '<div class="dash-kammer-kopf"><span><small class="leise">Kammer ' + k.nr + "</small><br><strong>" +
+                 esc(k.medikament) + '</strong></span><span class="wert">' + k.vorrat + "</span></div>" +
+               '<div class="meter" aria-hidden="true"><span style="width:' + breite + '%"></span>' +
+                 (warnTage != null ? '<i style="left:' + warnTage + '%"></i>' : "") + "</div>" +
+               '<div class="dash-kammer-fuss"><span class="leise">' + text + "</span>" +
+                 (k.knapp ? '<span class="status-marke teil">! bald leer</span>' : "") + "</div>" +
+             "</div>";
+    }).join("");
+  }
+
+  function ereignisZeigen(e) {
+    var box = $("d-ereignis"), s = STATUS[e.status];
+    box.className = "ereignis " + e.status;
+    box.innerHTML = '<span class="ereignis-symbol" aria-hidden="true">' + s[0] + "</span><span>" +
+                    "<strong>" + esc(e.name) + "</strong> hat um " + e.uhr + " Uhr " +
+                    (e.status === "fehler" ? "eine Ausgabe gestartet – <strong>Fehler am Gerät</strong>"
+                                           : e.erhalten + (e.erhalten === 1 ? " Tablette" : " Tabletten") + " bekommen" +
+                                             (e.status === "teil" ? " (weniger als geplant)" : "")) +
+                    "<small>" + teile(e) + "</small></span>";
+    box.hidden = false;
+    clearTimeout(ereignisTimer);
+    ereignisTimer = setTimeout(function () { box.hidden = true; }, 12000);
+  }
+
+  function zeichnen(d) {
+    $("d-datum").textContent = d.datum;
+    $("d-uhr").textContent = d.uhrzeit.slice(0, 5);
+    var k = d.kennzahlen;
+    $("k-versorgt").textContent = k.versorgt + " / " + k.nutzer;
+    $("k-versorgt-text").textContent = k.nutzer - k.versorgt ? (k.nutzer - k.versorgt) + " noch offen" : "alle abgeholt";
+    $("k-tabletten").textContent = k.tabletten;
+    $("k-abgeholt").textContent = k.abgeholt7 == null ? "–" : k.abgeholt7 + " %";
+    $("k-fehler").textContent = k.fehler;
+    $("k-fehler-text").textContent = k.fehler ? "⚠ bitte Gerät prüfen" : "✓ alles in Ordnung";
+    $("k-fehler-kachel").classList.toggle("alarm", k.fehler > 0);
+    $("d-scan").hidden = !d.scan_wartet;
+
+    // Neue Ausgabe seit dem letzten Abruf? Dann Banner zeigen und den Eintrag einblenden
+    var neu = d.ereignisse[0];
+    var istNeu = neu && letzteId !== null && neu.id > letzteId && neu.heute;
+    letzteId = neu ? neu.id : 0;
+
+    nutzerZeichnen(d.nutzer);
+    feedZeichnen(d.ereignisse, istNeu ? neu.id : null);
+    verlaufZeichnen(d.verlauf);
+    vorratZeichnen(d.vorrat);
+    if (istNeu) ereignisZeigen(neu);
+  }
+
+  function verbindung(ok, text) {
+    $("d-live").className = "live" + (ok ? "" : " weg");
+    $("d-live-text").textContent = text;
+  }
+
+  function holen() {
+    fetch(QUELLE, { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) {
+        if (r.redirected || !r.ok) throw new Error("abgemeldet");
+        return r.json();
+      })
+      .then(function (d) { zeichnen(d); verbindung(true, "live · " + d.uhrzeit); })
+      .catch(function (f) { verbindung(false, f.message === "abgemeldet" ? "bitte neu anmelden" : "keine Verbindung"); })
+      .then(function () { setTimeout(holen, TAKT); });
+  }
+
+  // Tooltip über den Säulen (Maus und Tastatur)
+  var tip = $("d-tooltip"), rahmen = tip.parentNode;
+  function tipZeigen(ev) {
+    var s = ev.target.closest(".saeule");
+    if (!s) return;
+    tip.textContent = s.dataset.text; tip.hidden = false;
+    var r = s.getBoundingClientRect(), o = rahmen.getBoundingClientRect();
+    var x = Math.min(Math.max(r.left - o.left + r.width / 2, 70), o.width - 70);
+    tip.style.left = x + "px";
+  }
+  $("d-verlauf").addEventListener("mouseover", tipZeigen);
+  $("d-verlauf").addEventListener("focusin", tipZeigen);
+  $("d-verlauf").addEventListener("mouseleave", function () { tip.hidden = true; });
+  $("d-verlauf").addEventListener("focusout", function () { tip.hidden = true; });
+
+  $("vollbild").addEventListener("click", function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  });
+
+  holen();
+})();
+</script>
+{% endblock %}
