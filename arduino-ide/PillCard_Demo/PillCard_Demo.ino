@@ -57,7 +57,7 @@ const uint8_t ANZAHL_NUTZER = sizeof(NUTZER) / sizeof(NUTZER[0]);
 
 // Servowinkel je Kammer (mit "servo K W" ausprobieren, dann hier eintragen)
 const uint8_t ANZAHL_KAMMERN = 3;
-const int WINKEL_RUHE[ANZAHL_KAMMERN]    = {0, 0, 0};
+const int WINKEL_RUHE[ANZAHL_KAMMERN]    = {180, 180, 0};  // neue 3D-Version: K1/K2 starten von der anderen Seite, K3 (IO27) dreht andersrum
 const int WINKEL_AUSGABE[ANZAHL_KAMMERN] = {90, 90, 90};
 
 const uint8_t  MAX_PRO_KAMMER   = 9;    // mehr Tabletten pro Kammer nimmt der ESP32 nicht an (einstellig fürs Display)
@@ -137,7 +137,7 @@ void bereit() {
 
 // ===== Servos =====
 
-/** Schickt einen Pulswert an den Servo einer Kammer (0 = keine Pulse, Servo ist locker). */
+/** Schickt einen Pulswert an den Servo einer Kammer. */
 void servoPuls(uint8_t kammer, uint32_t duty) {
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
   ledcWrite(PIN_SERVO[kammer], duty);
@@ -151,11 +151,6 @@ void servoWinkel(uint8_t kammer, int grad) {
   grad = constrain(grad, 0, 180);
   uint32_t mikros = map(grad, 0, 180, 500, 2400);  // SG90: ca. 0.5 ms bis 2.4 ms
   servoPuls(kammer, mikros * 65535UL / 20000UL);    // 50 Hz, 16 Bit: 20000 µs = 65535 Schritte
-}
-
-/** Lässt einen Servo los, damit er nicht brummt (das Mikrofon würde es hören). */
-void servoAus(uint8_t kammer) {
-  servoPuls(kammer, 0);
 }
 
 // ===== Mikrofon =====
@@ -218,8 +213,8 @@ void mikroAnzeigen() {
 // ===== Ausgabe =====
 
 /** Gibt eine Tablette aus einer Kammer aus und prüft mit dem Mikrofon; true = Tablette gehört.
- *  Der Servo startet immer aus der Ruhelage und steht danach wieder dort, angesteuert.
- *  Loslassen (servoAus) erst, wenn die Kammer fertig ist. */
+ *  Der Servo startet immer aus der Ruhelage und steht danach wieder dort.
+ *  Er wird nie losgelassen, damit ihn nichts aus der Ruhelage drücken kann. */
 bool tabletteAusgeben(uint8_t kammer, bool verlaufZeigen) {
   servoWinkel(kammer, WINKEL_RUHE[kammer]);     // sichere Ausgangslage, auch wenn er verschoben wurde
   delay(SERVO_ANFAHREN_MS);
@@ -264,7 +259,6 @@ void auftragAusfuehren(const Auftrag& a) {
       if (gehoert) ausgegeben[k]++;
       else allesDa = false;
     }
-    if (a.anzahl[k] > 0) servoAus(k);  // Kammer fertig, Servo steht in Ruhelage: jetzt loslassen
   }
 
   // Abschlusszeile: was laut Mikrofon wirklich rauskam
@@ -379,7 +373,6 @@ void befehlAusfuehren(String zeile) {
     int kammer = klein.substring(5).toInt() - 1;
     if (kammer < 0 || kammer >= ANZAHL_KAMMERN) { Serial.println("probe 1, probe 2 oder probe 3"); return; }
     tabletteAusgeben(kammer, true);
-    servoAus(kammer);
   } else if (klein.startsWith("schwelle")) {
     MIC_SCHWELLE = constrain((int)klein.substring(8).toInt(), 1, 4095);
     Serial.printf("Schwelle jetzt %d. Damit sie bleibt: oben bei MIC_SCHWELLE eintragen.\n", MIC_SCHWELLE);
@@ -465,7 +458,7 @@ void setup() {
   analogReadResolution(12);
   analogSetPinAttenuation(PIN_MIKRO, ADC_11db);  // Messbereich bis ca. 3.3 V
 
-  // Alle Servos in Ruhe fahren, dann loslassen
+  // Alle Servos in Ruhe fahren und dort halten
   for (uint8_t k = 0; k < ANZAHL_KAMMERN; k++) {
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
     ledcAttach(PIN_SERVO[k], 50, 16);
@@ -475,8 +468,6 @@ void setup() {
 #endif
     servoWinkel(k, WINKEL_RUHE[k]);
   }
-  delay(600);
-  for (uint8_t k = 0; k < ANZAHL_KAMMERN; k++) servoAus(k);
 
   if (RFID_AUF_ESP) {
     SPI.begin();  // ESP32-Standardpins: SCK 18, MISO 19, MOSI 23

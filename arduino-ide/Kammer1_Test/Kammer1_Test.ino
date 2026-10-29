@@ -10,7 +10,7 @@
 //   GND des ESP32 muss an dieselbe GND-Schiene!
 
 const uint8_t PIN_SERVO = 25;
-const int WINKEL_RUHE    = 0;
+const int WINKEL_RUHE    = 180;  // neue 3D-Version: Servo startet von der anderen Seite
 const int WINKEL_AUSGABE = 90;
 
 // 50 Hz Servosignal mit 16 Bit Auflösung: eine Periode = 20000 µs = 65535 Schritte

@@ -29,7 +29,7 @@ const uint8_t PIN_LCD_D4 = 32, PIN_LCD_D5 = 33, PIN_LCD_D6 = 14, PIN_LCD_D7 = 15
 const uint8_t PIN_SERVO     = 25;
 const uint8_t PIN_LED_GRUEN = 16;
 const uint8_t PIN_LED_ROT   = 17;
-const int WINKEL_RUHE    = 0;
+const int WINKEL_RUHE    = 180;  // neue 3D-Version: Servo startet von der anderen Seite
 const int WINKEL_AUSGABE = 90;
 
 MFRC522 rfid(PIN_RFID_SS, PIN_RFID_RST);

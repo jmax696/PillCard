@@ -48,7 +48,7 @@ MFRC522 rfid(PIN_RFID_SS, PIN_RFID_RST);
 LiquidCrystal lcd(PIN_LCD_RS, PIN_LCD_E, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
 Preferences speicher;
 
-int winkelRuhe    = 10;  // Startwerte, bis etwas gespeichert ist
+int winkelRuhe    = 170; // Startwerte, bis etwas gespeichert ist (neue 3D-Version: andere Seite)
 int winkelAusgabe = 90;
 int winkelAktuell = 10;
 bool imKalibrieren = false;

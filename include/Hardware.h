@@ -44,7 +44,7 @@ const uint8_t PIN_LED_ROT          = A1;
 
 // ===== Für beide Boards gleich =====
 
-const uint8_t SERVO_RUHE    = 0;   // Grad, Schieber zurück
+const uint8_t SERVO_RUHE    = 180; // Grad, Schieber zurück (neue 3D-Version: andere Seite)
 const uint8_t SERVO_AUSGABE = 90;  // Grad, Schieber schiebt eine Tablette raus
 
 // Pegel, wenn eine Tablette den Strahl unterbricht. Mit dem Bauteiltest prüfen,
