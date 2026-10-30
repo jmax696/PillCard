@@ -13,7 +13,7 @@ dort hängt der RC522 noch am ESP32.
 | ~~RFID-RC522~~ | – | – | hängt jetzt am Raspberry Pi (siehe unten). Früher IO5 / IO18 / IO23 / IO19 / IO4; zurück an den ESP32 nur mit `RFID_AUF_ESP = true`, dann ohne Leer-LEDs |
 | **LCD 16×2** (16 Pins, ohne I²C) | 1 VSS | GND-Schiene | Pin 1: von vorne gesehen ganz links; auf der Rückseite rechts, eckiges Lötpad |
 | | 2 VDD | 5V-Schiene | |
-| | 3 V0 (Kontrast) | erst frei lassen | Datenblatt: VDD−V0 ≈ 3.8 V, also V0 ≈ 1.2 V. Direkt an GND ist zu dunkel, 1 kΩ an GND passt meist |
+| | 3 V0 (Kontrast) | mittleres Bein des Potis (10 kΩ, B103) | Poti-Außenbeine an 5V-Schiene und GND-Schiene (vertauscht dreht nur die Richtung um), wie im Arduino-Beispiel `LiquidCrystal/HelloWorld`. Drehen, bis die Schrift klar ist; Datenblatt: V0 ≈ 1.2 V |
 | | 4 RS | IO22 | |
 | | 5 R/W | **GND-Schiene** | Pflicht: sonst schickt das Display 5V an den ESP32 |
 | | 6 E | IO21 | |
@@ -183,7 +183,7 @@ Jedes Teil einzeln anschliessen und sofort mit `env:bauteiltest` prüfen:
 1. **RC522** → Taste `r`. Bei „Firmware Version: 0x92“ (oder 0x91/0x88/0xB2) ist alles gut.
    `0x00` oder `0xFF` heisst: Verkabelung prüfen, meist SDA/RST vertauscht oder 3.3V fehlt.
 2. **LEDs** → `l`.
-3. **LCD** → `d`. Leer? V0 (Pin 3) an GND. Nur Kästchen? 1 kΩ zwischen V0 und GND.
+3. **LCD** → `d`. Leer oder nur Kästchen? Am Kontrast-Poti drehen.
 4. **Servos** → `s`. Winkel in `Hardware.h` (`SERVO_RUHE`, `SERVO_AUSGABE`) an den Schieber anpassen.
 5. **Lichtschranken und Kupferband** → `z`. Beobachten, ob „unterbrochen“ HIGH oder LOW ist,
    und `LICHTSCHRANKE_UNTERBROCHEN` in `Hardware.h` passend setzen.
