@@ -23,6 +23,20 @@ Neben jedem Bild liegt der QR-Text als `.txt` (zum Einfügen ins Textfeld, falls
 **`Druckblatt.pdf`** enthält alle Codes, zwei pro A4-Seite, je etwa 10 cm gross: zum Ausdrucken oder
 zum Abfotografieren vom Laptop-Bildschirm.
 
+## Ganzes A4-Rezept
+
+**`A4_Rezept_Anna.pdf`** sieht aus wie ein ausgedrucktes E-Rezept vom Arzt: Praxis, Patientin,
+Medikamente mit Dosierschema (Mo–Mi–Ab–Na), Stempel, Unterschrift und oben rechts der QR-Code
+(CHMED16A1). Für die Demo ausdrucken und den QR-Code abfotografieren. Erfundene Praxis und Ärztin
+(„Dr. med. Lena Muster“), Wasserzeichen „MUSTER“ und Vermerk „TESTREZEPT“, also kein echtes Rezept.
+
+| Patientin | Medikamente | Was man sieht |
+|---|---|---|
+| Anna Test | Magnesium 300 mg (1–0–1–0, mit einem Glas Wasser), Vitamin D3 1000 IE (1–0–0–0, zum Frühstück) | Anna wird vorgeschlagen, zwei Medikamente zur Wahl |
+
+QR-Text zum Einfügen: `A4_Rezept_Anna.txt`. Neu erzeugen mit `python3 docs/Test-Rezepte/a4_rezept.py`
+(braucht zusätzlich `rsvg-convert`, `brew install librsvg`).
+
 ## Demo
 
 1. Auf der Website unter **Kammern** den Vorrat einer Kammer auf 0 setzen → die LED am Einfüllstutzen
