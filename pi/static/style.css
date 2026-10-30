@@ -64,6 +64,11 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem; 
 .meldung.ok { background: var(--ok-hell); color: #0f5323; }
 .meldung.fehler { background: var(--fehler-hell); color: #7d1a12; }
 .meldung.warnung { background: var(--warn-hell); color: #5f3800; border: 1px solid #f0c674; }
+.meldung.benachrichtigung { border: 1px solid #f2a59c; }
+.meldung.benachrichtigung ul { margin: .4rem 0; padding-left: 1.2rem; }
+.meldung.benachrichtigung p { margin: 0; font-weight: 400; }
+.karte.alarm { border: 1px solid #f2a59c; background: #fff6f5; }
+.karte.alarm h2 { color: var(--fehler); margin-top: 0; }
 
 .status { font-size: 1.35rem; font-weight: 700; margin: 0 0 .6rem; }
 .status.ok { color: var(--ok); }

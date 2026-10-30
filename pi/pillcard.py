@@ -82,6 +82,8 @@ class Esp:
                 zeit = jetzt() - datetime.timedelta(seconds=vorher)
                 self.entnahmen.append((int(teile[1]), f"{zeit:%Y-%m-%d %H:%M:%S}"))
             return zeile
+        if zeile.startswith(("Mikrofon Kammer", "Verlauf ms")):
+            print(f"     ESP32: {zeile}")   # Pegel je Tablette, zum Einstellen von MIC_SCHWELLE
         return ""
 
     def mitlesen(self):

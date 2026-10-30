@@ -17,8 +17,8 @@
         <p class="held-titel">Heute erledigt</p>
         <p class="held-text">Um {{ genommen_um }} Uhr ausgegeben. Die nächste Ausgabe gibt es morgen.</p>
       {% elif zustand == 'teil' %}
-        <p class="held-titel">Heute ausgegeben – aber weniger als geplant</p>
-        <p class="held-text">Um {{ genommen_um }} Uhr. Bitte schauen Sie in die Schale.</p>
+        <p class="held-titel">Nicht alle Tabletten sind herausgekommen</p>
+        <p class="held-text">Um {{ genommen_um }} Uhr ausgegeben. Was fehlt, steht unten.</p>
       {% elif zustand == 'fehler' %}
         <p class="held-titel">Das Gerät hat einen Fehler gemeldet</p>
         <p class="held-text">Um {{ genommen_um }} Uhr. Bitte schauen Sie in die Schale und geben Sie
@@ -60,6 +60,18 @@
 </section>
 
 {# 2. Hinweise, die Handeln erfordern #}
+{% if fehlt %}
+<div class="meldung fehler benachrichtigung" role="alert">
+  <strong>Tablette nicht herausgekommen</strong>
+  <ul>
+    {% for f in fehlt %}
+    <li>{{ f.medikament }} (K{{ f.kammer }}):
+      {% if f.fehlt %}{{ f.fehlt }} {{ 'Tablette fehlt' if f.fehlt == 1 else 'Tabletten fehlen' }}{% else %}{{ f.grund }}{% endif %}</li>
+    {% endfor %}
+  </ul>
+  <p>Nehmen Sie nur, was im Becher liegt. Die Verwaltung sieht diese Meldung auch.</p>
+</div>
+{% endif %}
 {% for k in knapp %}
 <div class="meldung warnung" role="alert">
   <strong>Vorrat geht zu Ende:</strong> {{ k.medikament }} – noch {{ k.vorrat }} Tabletten

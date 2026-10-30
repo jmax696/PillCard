@@ -30,8 +30,9 @@
 //   Kommt der Becher nicht, bevor die erste Tablette fällt: FEHLER kein_becher.
 //   Wird er mittendrin weggenommen: Abbruch, BECHER 17 abgebrochen, dann FERTIG mit dem, was bis dahin kam.
 //   Nach FERTIG zeigt das Display "Ihre Medikation liegt bereit", bis der Becher genommen wird.
-//   Genommen = 10 s lang weg (BECHER_ENTNAHME_MS), dann kommt BECHER 17 genommen 10
-//   (Zahl = vor so vielen Sekunden hochgenommen). Wird er vorher zurückgestellt, zählt es nicht.
+//   Genommen = abgehoben (0,4 s weg) und wieder hingestellt, oder 10 s lang weg (BECHER_ENTNAHME_MS).
+//   Dann kommt BECHER 17 genommen 3 (Zahl = vor so vielen Sekunden hochgenommen) und das Display
+//   zeigt wieder "Karte hinhalten".
 //   Kommt vorher ein neuer Auftrag, endet die Beobachtung ohne Meldung (Becher blieb stehen).
 //
 // Verkabelung:
@@ -82,15 +83,15 @@ const uint16_t SERVO_FAHRZEIT_MS[ANZAHL_KAMMERN] = {0, 0, 800};
 const uint16_t SERVO_SCHRITT_MS = 20;   // ein neuer Winkel pro Servo-Takt (50 Hz)
 
 const uint8_t  MAX_PRO_KAMMER   = 9;    // mehr Tabletten pro Kammer nimmt der ESP32 nicht an (einstellig fürs Display)
-const uint8_t  VERSUCHE         = 2;    // so oft fährt der Servo, wenn das Mikrofon nichts hört
+const uint8_t  VERSUCHE         = 1;    // kein zweiter Versuch: überhört das Mikrofon eine Tablette, kämen sonst zu viele
 const uint16_t SERVO_ANFAHREN_MS = 300; // vor jeder Tablette erst in Ruhelage, falls er verschoben wurde
 const uint16_t SERVO_ZURUECK_MS  = 800; // Zeit für den Rückweg; erst danach kommt die nächste Tablette
 const uint16_t WECHSEL_MS        = 8000; // Wartebild: so lange "PillCard", dann so lange die leeren Kammern
 
 // Mikrofon: Ab dem Servo-Befehl wird MIC_FENSTER_MS lang gemessen, in Stücken von 50 ms.
 // Die ersten MIC_IGNORIEREN_MS zählen nicht, da ist vor allem der Servo laut.
-int            MIC_SCHWELLE      = 250;  // Pegel (Spitze-Spitze, 0-4095), ab dem eine Tablette zählt
-const uint16_t MIC_FENSTER_MS    = 900;
+int            MIC_SCHWELLE      = 200;  // Pegel (Spitze-Spitze, 0-4095), ab dem eine Tablette zählt; Rauschen ~110-150
+const uint16_t MIC_FENSTER_MS    = 1800; // Tabletten aus K2/K3 fallen oft erst nach 0,8-1 s
 const uint16_t MIC_IGNORIEREN_MS = 150;
 const uint16_t MIC_STUECK_MS     = 50;
 
@@ -159,8 +160,14 @@ void melde(const char* format, ...) {
 }
 
 /** Schreibt zwei Zeilen aufs Display (je max. 16 Zeichen, keine Umlaute). */
+// Eigenes Zeichen für "ö" (Platz 1), damit es nicht vom Zeichensatz des Displays abhängt
+const uint8_t ZEICHEN_OE[8] = {0b01010, 0b00000, 0b01110, 0b10001, 0b10001, 0b10001, 0b01110, 0b00000};
+#define OE "\x01"
+const char* FEHLT_ZEILE2 = "App " OE "ffnen";  // unter "Fehlt: K2", Details stehen auf der Website
+
 void anzeigen(const char* zeile1, const char* zeile2) {
   lcd.begin(16, 2);  // jedes Mal neu einrichten, falls das Display später Strom bekommen hat
+  lcd.createChar(1, (uint8_t*)ZEICHEN_OE);
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print(zeile1);
@@ -206,12 +213,12 @@ bool leerInfo() {
 }
 
 /** Abholzustand: "Ihre Medikation liegt bereit", solange der Becher nach der Ausgabe noch steht.
- *  fehltAnzeigen = "Fehlt: K1 / Pflege rufen" zeigen (kommt allein, wenn das Mikrofon gar nichts gehört hat). */
+ *  fehltAnzeigen = "Fehlt: K1 / App öffnen" zeigen (kommt allein, wenn das Mikrofon gar nichts gehört hat). */
 void abholbild(bool fehltAnzeigen) {
   if (!fehltText[0]) fehltAnzeigen = false;
   if (abholAnzahl == 0) fehltAnzeigen = true;
   leds(!fehltText[0], fehltText[0] != '\0');
-  if (fehltAnzeigen) anzeigen(fehltText, "Pflege rufen");
+  if (fehltAnzeigen) anzeigen(fehltText, FEHLT_ZEILE2);
   else anzeigen("Ihre Medikation", "liegt bereit");
   zeigtFehlt = fehltAnzeigen;
   zeigtLeerInfo = false;
@@ -433,9 +440,18 @@ void abholenStarten(int auftragId) {
   becherAbgehoben = false;
 }
 
+/** Abholung beendet: dem Pi melden und zurück zu "Karte hinhalten". */
+void becherGenommen() {
+  unsigned long weg = millis() - becherAbgehobenSeit;
+  melde("BECHER %d genommen %lu", becherAuftrag, weg / 1000);  // Zahl = vor so vielen Sekunden hochgenommen
+  becherAuftrag = -1;
+  becherAbgehoben = false;
+  bereit();
+}
+
 /** Läuft in loop(): Nach einem Auftrag melden, wenn der Becher genommen wurde.
  *  Abgehoben = BECHER_WEG_MS durchgehend offen, dann steht "Bitte einnehmen" da.
- *  Genommen = BECHER_ENTNAHME_MS weg. Wird er vorher zurückgestellt, liegt die Medikation wieder bereit. */
+ *  Genommen = danach wieder hingestellt (Tabletten sind raus) oder BECHER_ENTNAHME_MS weg geblieben. */
 void becherUeberwachen() {
   if (becherAuftrag < 0) return;
   bool zu = becherKontakt();
@@ -456,21 +472,14 @@ void becherUeberwachen() {
     return;
   }
 
-  // Zurückgestellt, bevor die Zeit um war: zählt nicht als genommen
+  // Leerer Becher zurückgestellt: Abholung ist vorbei, wieder bereit für die nächste Karte
   if (zu && stabil >= BECHER_DA_MS) {
-    becherAbgehoben = false;
     Serial.println("  Becher wieder hingestellt");
-    abholbild(false);
+    becherGenommen();
     return;
   }
 
-  unsigned long weg = millis() - becherAbgehobenSeit;
-  if (weg >= BECHER_ENTNAHME_MS) {
-    melde("BECHER %d genommen %lu", becherAuftrag, weg / 1000);  // Zahl = vor so vielen Sekunden hochgenommen
-    becherAuftrag = -1;
-    becherAbgehoben = false;
-    bereit();
-  }
+  if (millis() - becherAbgehobenSeit >= BECHER_ENTNAHME_MS) becherGenommen();
 }
 
 // ===== Ausgabe =====
@@ -526,7 +535,7 @@ void auftragAusfuehren(const Auftrag& a) {
       bool gehoert = false;
       for (uint8_t versuch = 1; versuch <= VERSUCHE && !gehoert; versuch++) {
         if (versuch > 1) anzeigen(zeile1, "Nochmal ...");
-        gehoert = tabletteAusgeben(k, false);
+        gehoert = tabletteAusgeben(k, true);  // Pegelverlauf auf USB, der Pi schreibt ihn ins Log
       }
 
       melde("TABLETTE %d K%u %s", a.id, k + 1, gehoert ? "ok" : "fehlt");
@@ -581,7 +590,7 @@ void auftragAusfuehren(const Auftrag& a) {
     anzeigen("Fertig!", "Bitte entnehmen");
   } else {
     leds(false, true);
-    anzeigen(fehltText, "Pflege rufen");
+    anzeigen(fehltText, FEHLT_ZEILE2);
   }
   delay(4000);
   bereit();

@@ -13,6 +13,10 @@ Aussehen in `pi/static/style.css`. Kein Internet nötig, alles liegt auf dem Pi.
   Hash in der Tabelle `einstellungen`.
 - **Übersicht:** alle Nutzer mit Karte, Plan und ob heute schon ausgegeben wurde; Vorrat jeder
   Kammer mit „reicht noch N Tage“ und Warnung, wenn er unter `warnen_ab` fällt.
+- **„Heute nicht herausgekommen“:** roter Kasten ganz oben, sobald heute laut Mikrofon weniger kam als
+  bestellt (oder das Gerät nicht antwortete / kein Becher da war): Zeit, Nutzer, Medikament, was fehlt.
+  In der Nutzerliste steht dann „! 15:11 · fehlt“ statt ✓. Das Display am Gerät zeigt dazu
+  „Fehlt: K2 / App öffnen“.
 - **＋ Neuen Nutzer anlernen:** Die Seite startet sofort einen Scan. Die nächste Karte am Leser
   gibt nichts aus, sondern meldet ihre UID an die Website (Display: „Karte erkannt“). Danach Name,
   Benutzername, Passwort und Dosierung pro Kammer eintragen (0–9 Tabletten je Kammer, frei
@@ -81,12 +85,15 @@ Für Präsentation und Beamer, nur mit dem Passwort der Verwaltung. Die Seite ho
 - **Heute** – von oben nach unten nach Wichtigkeit:
   1. Begrüßung mit Tageszeit und Datum.
   2. **Große Statuskarte:** „Ihre Tabletten liegen bereit – Karte ans Gerät halten“ mit der heutigen
-     Menge (angepasste Mengen markiert), „Heute erledigt“ mit Uhrzeit, „weniger als geplant“ (gelb)
+     Menge (angepasste Mengen markiert), „Heute erledigt“ mit Uhrzeit, „Nicht alle Tabletten sind herausgekommen“ (gelb)
      oder „Das Gerät hat einen Fehler gemeldet“ (rot), jeweils mit Symbol und Text.
-  3. **Vorratswarnung:** gelber Hinweis, wenn eine seiner Kammern knapp wird.
-  4. **Morgen:** was es morgen gibt, angepasste Mengen markiert.
-  5. **Letzte 7 Tage:** Leiste mit ✓ / ! / ⚠ / – pro Tag, Link zum Kalender.
-  6. **Dosis nach Tagesform:** anpassbare Medikamente mit − / + zwischen 0 und „Selbst anpassen bis“
+  3. **Tablette nicht herausgekommen:** roter Hinweis mit Medikament und Kammer, wenn laut Mikrofon
+     heute etwas fehlte (Statuskarte: „Nicht alle Tabletten sind herausgekommen“). Darauf verweist das
+     Display mit „App öffnen“.
+  4. **Vorratswarnung:** gelber Hinweis, wenn eine seiner Kammern knapp wird.
+  5. **Morgen:** was es morgen gibt, angepasste Mengen markiert.
+  6. **Letzte 7 Tage:** Leiste mit ✓ / ! / ⚠ / – pro Tag, Link zum Kalender.
+  7. **Dosis nach Tagesform:** anpassbare Medikamente mit − / + zwischen 0 und „Selbst anpassen bis“
      (liegt die verordnete Menge höher, bis zu ihr), für heute oder morgen. Weicht der Wert vom
      normalen Plan ab, steht „geändert“ daneben. Nach dem Speichern bestätigt die Seite, was es
      geben wird. Ist heute schon ausgegeben, geht nur noch „Morgen“.

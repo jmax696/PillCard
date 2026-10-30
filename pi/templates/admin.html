@@ -1,6 +1,26 @@
 {% extends "admin_base.html" %}
 {% block titel %}Übersicht – PillCard{% endblock %}
 {% block inhalt %}
+{% if fehlt %}
+<section class="karte flach alarm" role="alert">
+  <h2>⚠ Heute nicht herausgekommen</h2>
+  <table class="tabelle">
+    <thead><tr><th>Zeit</th><th>Nutzer</th><th>Medikament</th><th>Was</th></tr></thead>
+    <tbody>
+    {% for f in fehlt %}
+      <tr>
+        <td>{{ f.uhr }}</td>
+        <td><strong>{{ f.name }}</strong></td>
+        <td>{{ f.medikament }} <small class="leise">K{{ f.kammer }}</small></td>
+        <td>{{ f.grund }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="leise">Laut Mikrofon am Gerät. Die Meldung gilt für heute, „Heute zurücksetzen“ löscht sie mit.</p>
+</section>
+{% endif %}
+
 <div class="zeilenkopf">
   <h1>Nutzer</h1>
   <a class="knopf gross" href="{{ url_for('nutzer_neu') }}">＋ Neuen Nutzer anlernen</a>
@@ -16,7 +36,8 @@
           {% if not n.hat_passwort %} · <span class="marke-fehler">kein Passwort</span>{% endif %}</small></td>
         <td><code>{{ n.uid }}</code></td>
         <td>{{ n.plan }}</td>
-        <td>{% if n.genommen_um %}<span class="marke-ok">✓ {{ n.genommen_um }}</span>{% else %}<span class="leise">offen</span>{% endif %}</td>
+        <td>{% if n.genommen_um and n.fehlt %}<span class="marke-warn">! {{ n.genommen_um }} · fehlt</span>
+          {% elif n.genommen_um %}<span class="marke-ok">✓ {{ n.genommen_um }}</span>{% else %}<span class="leise">offen</span>{% endif %}</td>
         <td class="rechts"><a class="knopf klein" href="{{ url_for('nutzer_bearbeiten', nutzer_id=n.id) }}">Bearbeiten</a></td>
       </tr>
     {% else %}

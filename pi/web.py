@@ -162,6 +162,36 @@ def gruss():
     return "Guten Morgen" if stunde < 11 else ("Guten Abend" if stunde >= 18 else "Guten Tag")
 
 
+def fehlausgaben(nutzer_id=None):
+    """Heutige Ausgaben, bei denen laut Mikrofon nicht alles herauskam oder das Gerät nicht antwortete.
+    Für die Meldung auf der Nutzerseite (ein Nutzer) und in der Verwaltung (alle)."""
+    sql = """SELECT a.zeit, a.nutzer_id, a.kammer, a.bestellt, a.erhalten, k.medikament, n.name, e.becher
+             FROM ausgaben a
+             JOIN kammern k ON k.nr = a.kammer
+             JOIN nutzer n  ON n.id = a.nutzer_id
+             LEFT JOIN einnahmen e ON e.id = a.einnahme_id
+             WHERE DATE(a.zeit) = ? AND a.bestellt > 0 AND (a.erhalten IS NULL OR a.erhalten < a.bestellt)"""
+    werte = [heute().isoformat()]
+    if nutzer_id is not None:
+        sql += " AND a.nutzer_id = ?"
+        werte.append(nutzer_id)
+    zeilen = []
+    for r in db().execute(sql + " ORDER BY a.zeit DESC, a.kammer", werte):
+        z = dict(r)
+        z["uhr"] = z["zeit"][11:16]
+        if z["becher"] == "fehlte":
+            z["grund"] = "Kein Becher, nichts ausgegeben"
+        elif z["erhalten"] is None:
+            z["grund"] = "Gerät hat nicht geantwortet"
+        else:
+            fehlt = z["bestellt"] - z["erhalten"]
+            z["fehlt"] = fehlt
+            z["grund"] = (f"{fehlt} {'Tablette' if fehlt == 1 else 'Tabletten'} nicht herausgekommen"
+                          f" ({z['erhalten']} von {z['bestellt']})")
+        zeilen.append(z)
+    return zeilen
+
+
 def plan_text(nutzer_id):
     teile = [f"{r['anzahl']}× {r['medikament']}" for r in db().execute(
         """SELECT p.anzahl, k.medikament FROM plan p JOIN kammern k ON k.nr = p.kammer
@@ -266,6 +296,7 @@ def mein():
     morgen = heute() + datetime.timedelta(days=1)
     return render_template("mein.html", nutzer=n, genommen_um=genommen_um, meds=meds, knapp=knapp,
                            heute_ausgaben=heute_ausgaben, zustand=zustand, gruss=gruss(),
+                           fehlt=fehlausgaben(n["id"]),
                            datum_heute=datum_lang(heute()), datum_morgen=f"{morgen:%d.%m.}",
                            wochentag_morgen=WOCHENTAGE_LANG[morgen.weekday()],
                            woche=woche(n["id"]), anpassbar=[m for m in meds if m["anpassbar"]])
@@ -392,7 +423,11 @@ def admin():
     for n in db().execute("SELECT * FROM nutzer ORDER BY name"):
         nutzer.append({**dict(n), "plan": plan_text(n["id"]), "hat_passwort": bool(n["passwort"]),
                        "genommen_um": datenbank.heute_genommen_um(db(), n["id"])})
-    return render_template("admin.html", nutzer=nutzer, vorrat=datenbank.vorrat_status(db()))
+    fehlt = fehlausgaben()
+    mit_fehler = {f["nutzer_id"] for f in fehlt}
+    for n in nutzer:
+        n["fehlt"] = n["id"] in mit_fehler
+    return render_template("admin.html", nutzer=nutzer, vorrat=datenbank.vorrat_status(db()), fehlt=fehlt)
 
 
 @app.route("/admin/scan", methods=["POST"])

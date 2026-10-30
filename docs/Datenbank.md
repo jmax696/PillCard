@@ -130,26 +130,27 @@ hält `einnahmen` fest, was mit dem Becher passiert ist:
 
 | `becher` | `entnommen` | Bedeutung |
 |---|---|---|
-| `stand` | Zeit | Tabletten fielen in den Becher, danach wurde er hochgenommen und blieb 10 s weg |
-| `stand` | NULL | Tabletten fielen in den Becher, er steht noch da oder kam innerhalb von 10 s zurück (oder der ESP32 wurde neu gestartet) |
+| `stand` | Zeit | Tabletten fielen in den Becher, danach wurde er hochgenommen (und wieder hingestellt oder 10 s weg gelassen) |
+| `stand` | NULL | Tabletten fielen in den Becher, er steht noch da (oder der ESP32 wurde neu gestartet) |
 | `abgebrochen` | Zeit | Becher wurde mitten in der Ausgabe weggenommen, `ausgaben.erhalten` zeigt, was bis dahin kam |
 | `fehlte` | NULL | Kein Becher innerhalb von 15 s, nichts ausgegeben (`erhalten` leer) |
 | NULL | NULL | ESP32 hat nicht geantwortet |
 
 Ob die Tabletten herausgekommen sind, steht weiter pro Kammer in `ausgaben.erhalten` (Mikrofon).
 Dazu meldet der ESP32 `BECHER 17 abgebrochen` (während der Ausgabe) und nach `FERTIG`
-`BECHER 17 genommen 10`, sobald der Becher 10 s lang weg ist (`BECHER_ENTNAHME_MS` im Sketch). Die Zahl
+`BECHER 17 genommen 3`, sobald der Becher abgehoben (0,4 s weg) und wieder hingestellt wurde oder
+10 s lang weg ist (`BECHER_ENTNAHME_MS` im Sketch). Die Zahl
 sagt, vor wie vielen Sekunden er hochgenommen wurde. `pillcard.py` rechnet damit die Zeit zurück und
 trägt sie bei der jüngsten Einnahme mit dieser Auftragsnummer ein. Kommt vor der Entnahme schon der
 nächste Auftrag, bleibt `entnommen` leer.
 
 Bis zur Entnahme zeigt das Display „Ihre Medikation / liegt bereit“, bei fehlenden Tabletten im
-Wechsel mit „Fehlt: K1 / Pflege rufen“. Hat das Mikrofon gar nichts gehört, steht nur „Fehlt“ da.
-Ist der Becher abgehoben, steht „Bitte einnehmen“ da; wird er vor Ablauf der 10 s zurückgestellt,
-wieder „liegt bereit“.
+Wechsel mit „Fehlt: K1 / App öffnen“; was fehlt, zeigt die Website (Nutzerseite und Verwaltung). Hat das Mikrofon gar nichts gehört, steht nur „Fehlt“ da.
+Ist der Becher abgehoben, steht „Bitte einnehmen“ da. Sobald er wieder hingestellt wird (oder nach
+10 s ohne Becher), ist die Abholung vorbei und das Display zeigt wieder „Karte hinhalten“.
 
-> [!warning] Leerer Becher, der schnell zurückkommt
-> Wer schluckt und den leeren Becher innerhalb von 10 s zurückstellt, gilt als „nicht entnommen“.
+> [!warning] Becher abgehoben = genommen
+> Wer den vollen Becher nur kurz anhebt und wieder hinstellt, gilt trotzdem als „entnommen“.
 > Ein leerer und ein voller Becher sehen für das Kupferband gleich aus.
 
 Einnahmen, deren Becher nicht abgeholt wurde:
