@@ -163,7 +163,7 @@ void melde(const char* format, ...) {
 // Eigenes Zeichen für "ö" (Platz 1), damit es nicht vom Zeichensatz des Displays abhängt
 const uint8_t ZEICHEN_OE[8] = {0b01010, 0b00000, 0b01110, 0b10001, 0b10001, 0b10001, 0b01110, 0b00000};
 #define OE "\x01"
-const char* FEHLT_ZEILE2 = "App " OE "ffnen";  // unter "Fehlt: K2", Details stehen auf der Website
+const char* APP_OEFFNEN = "App " OE "ffnen";  // unter "Fehlt: K2" und "Karte unbekannt", Details stehen auf der Website
 
 void anzeigen(const char* zeile1, const char* zeile2) {
   lcd.begin(16, 2);  // jedes Mal neu einrichten, falls das Display später Strom bekommen hat
@@ -218,7 +218,7 @@ void abholbild(bool fehltAnzeigen) {
   if (!fehltText[0]) fehltAnzeigen = false;
   if (abholAnzahl == 0) fehltAnzeigen = true;
   leds(!fehltText[0], fehltText[0] != '\0');
-  if (fehltAnzeigen) anzeigen(fehltText, FEHLT_ZEILE2);
+  if (fehltAnzeigen) anzeigen(fehltText, APP_OEFFNEN);
   else anzeigen("Ihre Medikation", "liegt bereit");
   zeigtFehlt = fehltAnzeigen;
   zeigtLeerInfo = false;
@@ -548,7 +548,7 @@ void auftragAusfuehren(const Auftrag& a) {
   if (becherFehlt && versucht == 0) {
     melde("FEHLER kein_becher");
     leds(false, true);
-    anzeigen("Kein Becher", "Pflege rufen");
+    anzeigen("Kein Becher", "Becher abstellen");  // "hinstellen" hat 17 Zeichen, passt nicht
     delay(4000);
     bereit();
     return;
@@ -590,7 +590,7 @@ void auftragAusfuehren(const Auftrag& a) {
     anzeigen("Fertig!", "Bitte entnehmen");
   } else {
     leds(false, true);
-    anzeigen(fehltText, FEHLT_ZEILE2);
+    anzeigen(fehltText, APP_OEFFNEN);
   }
   delay(4000);
   bereit();
@@ -639,7 +639,7 @@ void meldungAnzeigen(const String& zeile) {
     anzeigen("Schon genommen", zusatz.length() ? zeile2 : "");
   } else if (art == "unbekannt") {
     leds(false, true);
-    anzeigen("Karte unbekannt", "Pflege fragen");
+    anzeigen("Karte unbekannt", APP_OEFFNEN);
   } else {
     // Unbekannte Art: Text so wie er kommt, max. 16 Zeichen
     leds(false, false);
