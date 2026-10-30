@@ -13,6 +13,7 @@ Start (im Ordner ~/pillcard):
 import argparse
 import datetime
 import glob
+import re
 import time
 from pathlib import Path
 
@@ -31,9 +32,11 @@ KARTE_SPERRE = 3       # s, so lange zählt dieselbe Karte nicht noch einmal
 LESER_PRUEFEN = 2      # s, so oft wird ohne Karte geprüft, ob der RC522 noch richtig eingestellt ist
 LEER_PRUEFEN = 2       # s, so oft wird nachgesehen, ob eine Kammer leer ist oder nachgefüllt wurde
 LEER_AUFFRISCHEN = 30  # s, so oft geht der Leer-Status auch ohne Änderung raus (falls der ESP32 neu gestartet ist)
+# Nur diese Befehle der Website gehen an den ESP32: Servo auf einen Winkel stellen, Probe-Ausgabe
+SERVO_BEFEHL = re.compile(r"(servo [1-3] (180|1[0-7][0-9]|[1-9]?[0-9])|probe [1-3])")
 RF_CFG, TX_CONTROL, VERSION = 0x26, 0x14, 0x37   # Register des RC522
 VERSTAERKUNG = 0x70    # RFCfgReg: Antennenverstärkung auf Maximum (48 dB), hilft bei kleinen Chips
-ANTWORTEN = ("BEREIT", "OK", "TABLETTE", "FERTIG", "FEHLER")
+ANTWORTEN = ("BEREIT", "OK", "TABLETTE", "FERTIG", "FEHLER", "BECHER")
 
 
 def jetzt():
@@ -46,6 +49,7 @@ class Esp:
     def __init__(self):
         port = (glob.glob("/dev/serial/by-id/*CP2102*") or ["/dev/ttyUSB0"])[0]
         self.seriell = serial.Serial(port, 115200, timeout=0.2)
+        self.entnahmen = []   # (Auftragsnummer, Zeit) aus "BECHER 17 genommen", bis main() sie einträgt
         print(f"ESP32 an {port}")
         # Falls der ESP32 beim Verbinden neu startet: kurz warten und alte Zeilen verwerfen
         ende = time.time() + 3
@@ -53,6 +57,7 @@ class Esp:
             if self.zeile_lesen() == "BEREIT":
                 break
         self.seriell.reset_input_buffer()
+        self.entnahmen.clear()   # alte Meldungen von vor dem Neustart gehören zu keinem Auftrag mehr
 
     def senden(self, zeile, leise=False):
         if not leise:
@@ -68,25 +73,46 @@ class Esp:
         zeile = self.seriell.readline().decode(errors="replace").strip()
         if zeile.split(" ")[0] in ANTWORTEN:
             print(f"  <- ESP32: {zeile}")
+            teile = zeile.split()
+            # "BECHER 17 genommen 30": vor 30 s hochgenommen und seitdem weg. Kann jederzeit kommen,
+            # auch mitten in einem neuen Auftrag, darum erst sammeln
+            if (len(teile) in (3, 4) and teile[0] == "BECHER" and teile[2] == "genommen"
+                    and all(t.isdigit() for t in teile[1:2] + teile[3:])):
+                vorher = int(teile[3]) if len(teile) == 4 else 0
+                zeit = jetzt() - datetime.timedelta(seconds=vorher)
+                self.entnahmen.append((int(teile[1]), f"{zeit:%Y-%m-%d %H:%M:%S}"))
             return zeile
         return ""
 
+    def mitlesen(self):
+        """Liest, was der ESP32 zwischen den Aufträgen schickt (z. B. BECHER 17 genommen), ohne zu warten."""
+        while self.seriell.in_waiting:
+            self.zeile_lesen()
+
+    def entnahmen_abholen(self):
+        entnahmen, self.entnahmen = self.entnahmen, []
+        return entnahmen
+
     def auftrag(self, nummer, kammern):
-        """Schickt einen Auftrag und wartet auf FERTIG. Rückgabe: {Kammer: ausgegeben} oder None."""
+        """Schickt einen Auftrag und wartet auf FERTIG.
+        Rückgabe: ({Kammer: ausgegeben} oder None, Becher-Status für die Tabelle einnahmen)."""
         teile = [f"K{k}={n}" for k, n in sorted(kammern.items()) if n > 0]
         self.senden(f"AUFTRAG {nummer} " + " ".join(teile))
         ende = time.time() + AUFTRAG_GRUND + PRO_TABLETTE * sum(kammern.values())
+        becher = "stand"   # FERTIG ohne BECHER ... abgebrochen: Becher stand die ganze Ausgabe über
         while time.time() < ende:
             zeile = self.zeile_lesen().split()
             if not zeile:
                 continue
             if zeile[0] == "FEHLER":
-                return None
+                return None, ("fehlte" if zeile[1:] == ["kein_becher"] else None)
+            if zeile[:3] == ["BECHER", str(nummer), "abgebrochen"]:
+                becher = "abgebrochen"
             if zeile[0] == "FERTIG" and zeile[1] == str(nummer):
                 # "K1=1" -> {1: 1}
-                return {int(t[1:].split("=")[0]): int(t.split("=")[1]) for t in zeile[2:]}
+                return {int(t[1:].split("=")[0]): int(t.split("=")[1]) for t in zeile[2:]}, becher
         print("  !! ESP32 hat nicht rechtzeitig FERTIG gemeldet")
-        return None
+        return None, None
 
 
 class LeerAnzeige:
@@ -111,6 +137,37 @@ class LeerAnzeige:
         else:
             return
         self.zuletzt, self.gesendet = leer, time.time()
+
+
+class ServoAbgleich:
+    """Hält die Servo-Winkel des ESP32 auf dem Stand der Datenbank ("WINKEL Ruhe1 Ausgabe1 ...")
+    und gibt die Befehle der Kalibrier-Seite (servo 3 12, probe 3) an den ESP32 weiter."""
+
+    def __init__(self, esp, db):
+        self.esp, self.db = esp, db
+        self.zuletzt, self.gesendet, self.geprueft = None, 0.0, 0.0
+
+    def pruefen(self, sofort=False):
+        if not self.esp:
+            return
+        for befehl in datenbank.servo_befehle_holen(self.db):
+            if SERVO_BEFEHL.fullmatch(befehl):
+                self.esp.senden(befehl)
+            else:
+                print(f"  !! unbekannter Servo-Befehl verworfen: {befehl!r}")
+
+        if not sofort and time.time() - self.geprueft < LEER_PRUEFEN:
+            return
+        self.geprueft = time.time()
+        winkel = [(k["ruhe"], k["ausgabe"]) for k in datenbank.servo_winkel(self.db)]
+        zeile = "WINKEL " + " ".join(f"{r} {a}" for r, a in winkel)
+        if winkel != self.zuletzt:
+            self.esp.senden(zeile)
+        elif time.time() - self.gesendet > LEER_AUFFRISCHEN:
+            self.esp.senden(zeile, leise=True)  # falls der ESP32 neu gestartet ist
+        else:
+            return
+        self.zuletzt, self.gesendet = winkel, time.time()
 
 
 def leser_einrichten(leser):
@@ -170,14 +227,29 @@ def karte_bearbeiten(uid, esp, db):
 
     zeit = f"{jetzt():%Y-%m-%d %H:%M:%S}"
     nummer = int(time.time()) % 100000
-    ergebnis = esp.auftrag(nummer, kammern)
+    ergebnis, becher = esp.auftrag(nummer, kammern)
 
-    # Auch bei Fehlern eintragen (erhalten bleibt dann leer), damit nichts doppelt ausgegeben wird
-    datenbank.ausgabe_eintragen(db, nutzer["id"], zeit, kammern, ergebnis)
+    # Auch bei Fehlern eintragen (erhalten bleibt dann leer), damit nichts doppelt ausgegeben wird.
+    # Wurde der Becher mittendrin weggenommen, ist das zugleich die Entnahme.
+    entnommen = f"{jetzt():%Y-%m-%d %H:%M:%S}" if becher == "abgebrochen" else None
+    einnahme_id = datenbank.einnahme_eintragen(db, nutzer["id"], zeit, nummer, becher, entnommen)
+    datenbank.ausgabe_eintragen(db, nutzer["id"], zeit, kammern, ergebnis, einnahme_id)
 
     bestellt = " ".join(f"K{k}={n}" for k, n in sorted(kammern.items()))
     erhalten = " ".join(f"K{k}={n}" for k, n in sorted((ergebnis or {}).items()))
-    print(f"  bestellt {bestellt}, erhalten {erhalten or 'FEHLER'}")
+    print(f"  bestellt {bestellt}, erhalten {erhalten or 'FEHLER'}, Becher {becher or 'unbekannt'}")
+
+
+def entnahmen_eintragen(esp, db):
+    """Trägt ein, wann ein Becher nach der Ausgabe hochgenommen wurde (BECHER 17 genommen)."""
+    if not esp:
+        return
+    esp.mitlesen()
+    for nummer, zeit in esp.entnahmen_abholen():
+        if datenbank.becher_entnommen(db, nummer, zeit):
+            print(f"[{zeit[11:]}] Becher von Auftrag {nummer} entnommen", flush=True)
+        else:
+            print(f"  !! Entnahme für unbekannten Auftrag {nummer} gemeldet")
 
 
 def main():
@@ -200,6 +272,8 @@ def main():
     esp = None if args.uids else Esp()
     leer = LeerAnzeige(esp, db)
     leer.pruefen(sofort=True)
+    servos = ServoAbgleich(esp, db)
+    servos.pruefen(sofort=True)
     print("Bereit, Karte hinhalten ... (Strg+C beendet)")
 
     letzte_uid, letzte_zeit = None, 0.0
@@ -217,6 +291,8 @@ def main():
                               flush=True)
                         leser_einrichten(leser)
                 leer.pruefen()
+                servos.pruefen()
+                entnahmen_eintragen(esp, db)
                 time.sleep(0.1)
                 continue
             # Liegt die Karte noch auf, zählt sie nicht noch einmal
@@ -230,6 +306,7 @@ def main():
                 print(f"UID {uid}  ({nutzer['name'] if nutzer else 'unbekannt'})", flush=True)
             else:
                 karte_bearbeiten(uid, esp, db)
+                entnahmen_eintragen(esp, db)  # kann während des Auftrags für den vorigen gekommen sein
                 leer.pruefen(sofort=True)  # nach einer Ausgabe kann eine Kammer leer geworden sein
             letzte_zeit = time.time()
     except KeyboardInterrupt:

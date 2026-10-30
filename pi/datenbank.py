@@ -44,6 +44,14 @@ CREATE TABLE IF NOT EXISTS anpassung (
   anzahl     INTEGER NOT NULL,
   PRIMARY KEY (nutzer_id, kammer, datum)
 );
+CREATE TABLE IF NOT EXISTS einnahmen (
+  id          INTEGER PRIMARY KEY,
+  nutzer_id   INTEGER REFERENCES nutzer(id),
+  zeit        TEXT NOT NULL,             -- gleiche Zeit wie die Zeilen in ausgaben
+  auftrag_nr  INTEGER,                   -- Nummer im AUFTRAG an den ESP32, kommt in BECHER-Meldungen zurück
+  becher      TEXT,                      -- 'stand', 'abgebrochen', 'fehlte'; NULL = ESP32 hat nicht geantwortet
+  entnommen   TEXT                       -- wann der Becher nach der Ausgabe hochgenommen wurde; NULL = (noch) nicht
+);
 CREATE TABLE IF NOT EXISTS ausgaben (
   id         INTEGER PRIMARY KEY,
   nutzer_id  INTEGER REFERENCES nutzer(id),
@@ -72,6 +80,11 @@ CREATE TABLE IF NOT EXISTS rezepte (
   rezept_id   TEXT,                      -- Id aus dem E-Rezept bzw. eMediplan
   roh         TEXT                       -- der gescannte QR-Text, unverändert
 );
+CREATE TABLE IF NOT EXISTS servo_befehl (
+  id         INTEGER PRIMARY KEY,
+  befehl     TEXT NOT NULL,              -- z. B. 'servo 3 12' beim Kalibrieren, pillcard.py schickt ihn weiter
+  angefragt  TEXT NOT NULL
+);
 """
 
 # Spalten, die nach dem ersten Entwurf dazugekommen sind; werden in alten Datenbanken nachgetragen
@@ -79,7 +92,17 @@ NACHTRAG = [
     ("nutzer", "benutzername", "TEXT"),              # Login auf der Website
     ("kammern", "vorrat", "INTEGER DEFAULT 0"),      # Tabletten in der Kammer
     ("kammern", "warnen_ab", "INTEGER DEFAULT 10"),  # ab hier Hinweis "Vorrat geht zu Ende"
+    ("kammern", "ruhe_winkel", "INTEGER"),           # Grundstellung des Servos (Kalibrieren auf der Website)
+    ("kammern", "richtung", "INTEGER"),              # Ausgabe bei Grundstellung + Drehung (1) oder - Drehung (-1)
+    ("kammern", "drehung", "INTEGER"),               # so weit dreht der Servo zur Ausgabe, z. B. 90 (Grad)
+    ("ausgaben", "einnahme_id", "INTEGER REFERENCES einnahmen(id)"),  # zu welcher Einnahme die Zeile gehört
 ]
+
+# Servo-Grundstellung und Drehrichtung, bis auf der Website kalibriert wurde (wie bisher im Sketch)
+SERVO_START = {1: (170, -1), 2: (170, -1), 3: (10, 1)}
+DREHUNG_START = 90                    # so weit dreht der Servo zur Ausgabe, bis kalibriert wurde
+DREHUNG_MIN, DREHUNG_MAX = 10, 180    # mehr als 180° kann ein SG90 nicht
+BEFEHL_GUELTIG = "DATETIME('now', 'localtime', '-10 seconds')"  # ältere Servo-Befehle verfallen
 
 SCAN_GUELTIG = "DATETIME('now', 'localtime', '-2 minutes')"  # so lange wartet ein Scan-Auftrag
 
@@ -125,10 +148,15 @@ def verbinden():
             db.execute(f"ALTER TABLE {tabelle} ADD COLUMN {spalte} {typ}")
     db.execute("CREATE UNIQUE INDEX IF NOT EXISTS nutzer_benutzername ON nutzer(benutzername)")
     db.execute("UPDATE OR IGNORE nutzer SET benutzername = LOWER(name) WHERE benutzername IS NULL")
+    for nr, (ruhe, richtung) in SERVO_START.items():
+        db.execute("UPDATE kammern SET ruhe_winkel = ? WHERE nr = ? AND ruhe_winkel IS NULL", (ruhe, nr))
+        db.execute("UPDATE kammern SET richtung = ? WHERE nr = ? AND richtung IS NULL", (richtung, nr))
     if not db.execute("SELECT 1 FROM kammern").fetchone():
         with db:
             db.executemany("INSERT INTO kammern (nr, medikament, anpassbar, max_pro_tag) VALUES (?, ?, ?, ?)",
                            KAMMERN_START)
+            for nr, (ruhe, richtung) in SERVO_START.items():
+                db.execute("UPDATE kammern SET ruhe_winkel = ?, richtung = ? WHERE nr = ?", (ruhe, richtung, nr))
     db.commit()
     return db
 
@@ -150,16 +178,33 @@ def heute_genommen_um(db, nutzer_id):
     return zeit[11:16] if zeit else None
 
 
-def ausgabe_eintragen(db, nutzer_id, zeit, bestellt, erhalten):
+def ausgabe_eintragen(db, nutzer_id, zeit, bestellt, erhalten, einnahme_id=None):
     """Eine Zeile pro Kammer und Vorrat abziehen. erhalten=None: ESP32 hat nicht geantwortet (bleibt leer)."""
     with db:
         for kammer, anzahl in bestellt.items():
             wert = None if erhalten is None else erhalten.get(kammer, 0)
-            db.execute("INSERT INTO ausgaben (nutzer_id, zeit, kammer, bestellt, erhalten) VALUES (?, ?, ?, ?, ?)",
-                       (nutzer_id, zeit, kammer, anzahl, wert))
+            db.execute("""INSERT INTO ausgaben (nutzer_id, zeit, kammer, bestellt, erhalten, einnahme_id)
+                          VALUES (?, ?, ?, ?, ?, ?)""",
+                       (nutzer_id, zeit, kammer, anzahl, wert, einnahme_id))
             verbraucht = anzahl if wert is None else wert
             db.execute("UPDATE kammern SET vorrat = MAX(COALESCE(vorrat, 0) - ?, 0) WHERE nr = ?",
                        (verbraucht, kammer))
+
+
+def einnahme_eintragen(db, nutzer_id, zeit, auftrag_nr, becher, entnommen=None):
+    """Eine Zeile pro Auftrag mit dem Becher-Status; die Zeilen in ausgaben verweisen darauf."""
+    with db:
+        return db.execute("INSERT INTO einnahmen (nutzer_id, zeit, auftrag_nr, becher, entnommen) VALUES (?, ?, ?, ?, ?)",
+                          (nutzer_id, zeit, auftrag_nr, becher, entnommen)).lastrowid
+
+
+def becher_entnommen(db, auftrag_nr, zeit):
+    """ESP32 meldet "BECHER 17 genommen": Entnahmezeit bei der jüngsten Einnahme mit dieser Nummer.
+    False, wenn es keine offene Einnahme dazu gibt (z. B. schon eingetragen)."""
+    with db:
+        return db.execute("""UPDATE einnahmen SET entnommen = ?
+                             WHERE id = (SELECT MAX(id) FROM einnahmen WHERE auftrag_nr = ?) AND entnommen IS NULL""",
+                          (zeit, auftrag_nr)).rowcount > 0
 
 
 def vorrat_status(db):
@@ -200,7 +245,9 @@ def kammer_neu_belegen(db, kammer, medikament, vorrat, nutzer_id, pro_tag, rezep
 def heute_zuruecksetzen(db):
     """Löscht die heutigen Ausgaben, danach dürfen alle wieder (für Demo und Tests)."""
     with db:
-        return db.execute(f"DELETE FROM ausgaben WHERE DATE(zeit) = {HEUTE}").rowcount
+        geloescht = db.execute(f"DELETE FROM ausgaben WHERE DATE(zeit) = {HEUTE}").rowcount
+        db.execute(f"DELETE FROM einnahmen WHERE DATE(zeit) = {HEUTE}")
+        return geloescht
 
 
 def scan_anfragen(db):
@@ -227,6 +274,65 @@ def scan_ergebnis(db, scan_id):
     if not zeile:
         return None, True
     return zeile["uid"], bool(zeile["abgelaufen"]) and not zeile["uid"]
+
+
+# ---------- Servos kalibrieren ----------
+
+def ruhe_bereich(richtung, drehung):
+    """Erlaubte Grundstellungen, damit die Ausgabe (um drehung weiter) noch zwischen 0 und 180° liegt."""
+    return (drehung, 180) if richtung < 0 else (0, 180 - drehung)
+
+
+def servo_winkel(db):
+    """Pro Kammer (nach Nummer): Nummer, Grundstellung, Richtung und Ausgabewinkel."""
+    zeilen = []
+    for k in db.execute("SELECT nr, medikament, ruhe_winkel, richtung, drehung FROM kammern ORDER BY nr"):
+        start_ruhe, start_richtung = SERVO_START.get(k["nr"], (90, 1))
+        ruhe = k["ruhe_winkel"] if k["ruhe_winkel"] is not None else start_ruhe
+        richtung = k["richtung"] or start_richtung
+        drehung = k["drehung"] or DREHUNG_START
+        # Passt die Ausgabe nicht (sollte nie vorkommen), lieber am Rand anhalten als falsch schicken
+        ausgabe = max(0, min(180, ruhe + richtung * drehung))
+        zeilen.append({"nr": k["nr"], "medikament": k["medikament"], "ruhe": ruhe, "richtung": richtung,
+                       "drehung": drehung, "ausgabe": ausgabe, "bereich": ruhe_bereich(richtung, drehung)})
+    return zeilen
+
+
+def grundstellung_speichern(db, nr, ruhe, richtung, drehung):
+    """Website: neue Grundstellung und Drehung. False, wenn die Ausgabe dann außerhalb 0–180° läge."""
+    richtung = -1 if richtung < 0 else 1
+    if not DREHUNG_MIN <= drehung <= DREHUNG_MAX:
+        return False
+    von, bis = ruhe_bereich(richtung, drehung)
+    if not von <= ruhe <= bis:
+        return False
+    with db:
+        db.execute("UPDATE kammern SET ruhe_winkel = ?, richtung = ?, drehung = ? WHERE nr = ?",
+                   (ruhe, richtung, drehung, nr))
+    return True
+
+
+def servo_befehl(db, befehl):
+    """Website: Befehl für den ESP32 einreihen, pillcard.py schickt ihn weiter."""
+    with db:
+        db.execute("INSERT INTO servo_befehl (befehl, angefragt) VALUES (?, DATETIME('now', 'localtime'))",
+                   (befehl,))
+
+
+def servo_befehle_holen(db):
+    """pillcard.py: alle wartenden Befehle (älteste zuerst) und aus der Tabelle nehmen.
+    Was älter als 10 s ist, verfällt, damit nach einem Neustart nichts Altes nachkommt."""
+    with db:
+        zeilen = db.execute(f"SELECT id, befehl FROM servo_befehl WHERE angefragt >= {BEFEHL_GUELTIG} "
+                            "ORDER BY id").fetchall()
+        db.execute("DELETE FROM servo_befehl")
+    return [z["befehl"] for z in zeilen]
+
+
+def servo_befehle_haengen(db):
+    """Website: Anzahl Befehle, die seit über 3 s keiner abholt (dann läuft pillcard.py nicht)."""
+    return db.execute("SELECT COUNT(*) FROM servo_befehl "
+                      "WHERE angefragt < DATETIME('now', 'localtime', '-3 seconds')").fetchone()[0]
 
 
 def import_plaene(db):
@@ -262,7 +368,8 @@ def import_plaene(db):
 
 
 def zeigen(db):
-    for tabelle in ("nutzer", "kammern", "plan", "anpassung", "ausgaben", "scan_auftrag", "rezepte"):
+    for tabelle in ("nutzer", "kammern", "plan", "anpassung", "einnahmen", "ausgaben", "scan_auftrag", "rezepte",
+                    "servo_befehl"):
         zeilen = db.execute(f"SELECT * FROM {tabelle}").fetchall()
         print(f"\n== {tabelle} ({len(zeilen)})")
         for z in zeilen:

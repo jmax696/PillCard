@@ -1,0 +1,150 @@
+{% extends "admin_base.html" %}
+{% block titel %}Servos – PillCard{% endblock %}
+{% block inhalt %}
+<h1>Servos kalibrieren</h1>
+<ol class="leise">
+  <li>Bei „Grundstellung“ den Servo mit ◀ ▶ drehen, bis die Kammer genau in der Grundstellung steht.</li>
+  <li>Bei „Drehung“ einstellen, wie weit er zur Ausgabe dreht. Er fährt dabei gleich zur Ausgabe.</li>
+  <li>Speichern. Ab dann nutzt jede Ausgabe diese Werte, auch nach einem Neustart.</li>
+</ol>
+<p class="meldung warnung" id="servo-hinweis" hidden>
+  Die Befehle kommen nicht beim Gerät an. Läuft PillCard auf dem Pi?
+</p>
+
+{% for k in kammern %}
+<section class="karte servo" data-nr="{{ k.nr }}" data-ruhe="{{ k.ruhe }}" data-richtung="{{ k.richtung }}"
+         data-drehung="{{ k.drehung }}" data-min="{{ drehung_min }}" data-max="{{ drehung_max }}">
+  <div class="zeilenkopf">
+    <h2>Kammer {{ k.nr }}</h2>
+    <span class="leise">{{ k.medikament }}</span>
+  </div>
+
+  <p class="servo-titel">Grundstellung</p>
+  <div class="servo-stand">
+    <button type="button" class="rund zweit" data-ruhe-schritt="-5" aria-label="Grundstellung 5 Grad zurück">«</button>
+    <button type="button" class="rund" data-ruhe-schritt="-1" aria-label="Grundstellung 1 Grad zurück">◀</button>
+    <output class="servo-winkel servo-ruhe">{{ k.ruhe }}°</output>
+    <button type="button" class="rund" data-ruhe-schritt="1" aria-label="Grundstellung 1 Grad weiter">▶</button>
+    <button type="button" class="rund zweit" data-ruhe-schritt="5" aria-label="Grundstellung 5 Grad weiter">»</button>
+  </div>
+
+  <p class="servo-titel">Drehung zur Ausgabe</p>
+  <div class="servo-stand">
+    <button type="button" class="rund zweit" data-drehung-schritt="-5" aria-label="Drehung 5 Grad kleiner">«</button>
+    <button type="button" class="rund" data-drehung-schritt="-1" aria-label="Drehung 1 Grad kleiner">◀</button>
+    <output class="servo-winkel servo-drehung">{{ k.drehung }}°</output>
+    <button type="button" class="rund" data-drehung-schritt="1" aria-label="Drehung 1 Grad größer">▶</button>
+    <button type="button" class="rund zweit" data-drehung-schritt="5" aria-label="Drehung 5 Grad größer">»</button>
+  </div>
+
+  <p class="servo-info">
+    Ausgabe bei <strong class="servo-ausgabe">{{ k.ausgabe }}°</strong>
+    · gespeichert: {{ k.ruhe }}° + {{ k.drehung }}°
+    <span class="marke-fehler servo-ungespeichert" hidden>nicht gespeichert</span>
+  </p>
+  <p class="servo-fehler meldung fehler" hidden></p>
+
+  <form method="post" action="{{ url_for('servo_speichern', nr=k.nr) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="winkel" value="{{ k.ruhe }}">
+    <input type="hidden" name="drehung" value="{{ k.drehung }}">
+    <fieldset class="tagwahl">
+      <legend>Zur Ausgabe dreht er</legend>
+      <label class="wahl"><input type="radio" name="richtung" value="-1" {{ 'checked' if k.richtung < 0 }}>
+        zu kleineren Winkeln</label>
+      <label class="wahl"><input type="radio" name="richtung" value="1" {{ 'checked' if k.richtung > 0 }}>
+        zu größeren Winkeln</label>
+    </fieldset>
+    <div class="aktionen">
+      <button class="servo-speichern">Speichern</button>
+      <button type="button" class="zweit" data-aktion="ausgabe">Ausgabe zeigen</button>
+      <button type="button" class="zweit" data-aktion="zurueck">Zurück zur Grundstellung</button>
+      <button type="button" class="zweit" data-aktion="probe"
+              title="Eine echte Ausgabe mit den gespeicherten Werten, ohne Eintrag im Kalender">Probe-Ausgabe</button>
+    </div>
+  </form>
+</section>
+{% endfor %}
+
+<script>
+(function () {
+  var csrf = "{{ csrf }}";
+  var hinweis = document.getElementById("servo-hinweis");
+
+  function schicken(url, felder) {
+    var daten = new FormData();
+    daten.append("csrf", csrf);
+    for (var name in felder) daten.append(name, felder[name]);
+    return fetch(url, { method: "POST", body: daten, credentials: "same-origin" })
+      .then(function (antwort) { return antwort.json(); })
+      .then(function (json) { hinweis.hidden = !json.haengt; })
+      .catch(function () { hinweis.hidden = false; });
+  }
+
+  function begrenzen(wert, von, bis) { return Math.max(von, Math.min(bis, wert)); }
+
+  document.querySelectorAll(".servo").forEach(function (karte) {
+    var nr = karte.dataset.nr, basis = "/admin/servos/" + nr + "/";
+    var gespeichert = { ruhe: Number(karte.dataset.ruhe), richtung: Number(karte.dataset.richtung),
+                        drehung: Number(karte.dataset.drehung) };
+    var minDrehung = Number(karte.dataset.min), maxDrehung = Number(karte.dataset.max);
+    var ruhe = gespeichert.ruhe, drehung = gespeichert.drehung, warten = null;
+    var feldRuhe = karte.querySelector("input[name=winkel]"), feldDrehung = karte.querySelector("input[name=drehung]");
+    var speichern = karte.querySelector(".servo-speichern");
+    var ungespeichert = karte.querySelector(".servo-ungespeichert"), fehler = karte.querySelector(".servo-fehler");
+
+    function richtung() { return Number(karte.querySelector("input[name=richtung]:checked").value); }
+    function ausgabe() { return ruhe + richtung() * drehung; }
+    function passt() { return ausgabe() >= 0 && ausgabe() <= 180; }
+
+    function anzeigen() {
+      karte.querySelector(".servo-ruhe").textContent = ruhe + "°";
+      karte.querySelector(".servo-drehung").textContent = drehung + "°";
+      karte.querySelector(".servo-ausgabe").textContent = ausgabe() + "°";
+      feldRuhe.value = ruhe;
+      feldDrehung.value = drehung;
+      ungespeichert.hidden = ruhe === gespeichert.ruhe && drehung === gespeichert.drehung &&
+                             richtung() === gespeichert.richtung;
+      speichern.disabled = !passt();
+      fehler.hidden = passt();
+      fehler.textContent = passt() ? "" : "Die Ausgabe läge bei " + ausgabe() + "°, der Servo kann nur 0–180°. " +
+        "Drehung verkleinern, Richtung umstellen oder das Servohorn eine Zacke versetzen.";
+    }
+
+    function fahren(ziel) {
+      // Beim schnellen Klicken nur den letzten Winkel schicken
+      clearTimeout(warten);
+      warten = setTimeout(function () { schicken(basis + "bewegen", { winkel: ziel }); }, 150);
+    }
+
+    karte.querySelectorAll("[data-ruhe-schritt]").forEach(function (knopf) {
+      knopf.addEventListener("click", function () {
+        ruhe = begrenzen(ruhe + Number(knopf.dataset.ruheSchritt), 0, 180);
+        anzeigen();
+        fahren(ruhe);
+      });
+    });
+    karte.querySelectorAll("[data-drehung-schritt]").forEach(function (knopf) {
+      knopf.addEventListener("click", function () {
+        drehung = begrenzen(drehung + Number(knopf.dataset.drehungSchritt), minDrehung, maxDrehung);
+        anzeigen();
+        if (passt()) fahren(ausgabe());   // gleich zeigen, wo die Ausgabe jetzt liegt
+      });
+    });
+    karte.querySelectorAll("input[name=richtung]").forEach(function (wahl) {
+      wahl.addEventListener("change", anzeigen);
+    });
+    karte.querySelector("[data-aktion=ausgabe]").addEventListener("click", function () {
+      if (passt()) fahren(ausgabe());
+    });
+    karte.querySelector("[data-aktion=zurueck]").addEventListener("click", function () { fahren(ruhe); });
+    karte.querySelector("[data-aktion=probe]").addEventListener("click", function () {
+      if (!ungespeichert.hidden &&
+          !confirm("Die Probe nutzt die gespeicherten Werte, nicht die gerade eingestellten. Trotzdem?")) return;
+      schicken(basis + "probe", {});
+    });
+    anzeigen();
+  });
+})();
+</script>
+{% endblock %}

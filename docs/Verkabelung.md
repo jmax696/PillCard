@@ -32,7 +32,8 @@ dort hängt der RC522 noch am ESP32.
 | | G | GND-Schiene | |
 | **Raspberry Pi** | USB-Buchse | USB-Anschluss des ESP32 | ein USB-Kabel für Strom und Aufträge, Alternative mit 3 Kabeln siehe unten |
 | ~~Lichtschranke 1 / 2 / 3~~ | OUT | ~~IO34~~ / IO35 / IO36 (VP) | nicht mehr geplant, IO34 hat jetzt das Mikrofon |
-| **Kupferband Schale** | Streifen A / B | IO13 / GND | interner Pull-up |
+| **Kupferband Becher** | Bodenfläche A | GND-Schiene | äußerer Ring. `PillCard_Demo` gibt nur aus, wenn der Becher steht (`BECHER_PRUEFEN`, Befehl `becher` zum Ausrichten); einzeln testen mit [`Becher_Test`](../arduino-ide/Becher_Test/Becher_Test.ino) |
+| | Bodenfläche B | IO13 über 1 kΩ | innere Fläche; dazu 10 kΩ von IO13 an 3V3 und 100 nF von IO13 an GND. Nie an 5V |
 | **ESP32** | GND | GND-Schiene | gemeinsame Masse, Pflicht |
 
 Strom: Das ESP32 läuft über USB. Servos und LCD hängen an der 5V-Schiene des
@@ -83,7 +84,14 @@ Worauf das Pi-Programm achten muss:
 - Beim Öffnen der USB-Verbindung startet der ESP32 neu. Erst auf die Zeile `BEREIT` warten,
   dann Aufträge schicken.
 - Über USB kommen auch Hilfstexte für den Seriellen Monitor. Nur Zeilen auswerten, die mit
-  `OK`, `TABLETTE`, `FERTIG`, `FEHLER` oder `BEREIT` anfangen.
+  `OK`, `TABLETTE`, `FERTIG`, `FEHLER`, `BECHER` oder `BEREIT` anfangen.
+- `BECHER 17 genommen 30` kommt erst nach `FERTIG`, wenn der Becher 30 s lang weg ist, also
+  auch lange nach dem Auftrag. Die Zahl sagt, vor wie vielen Sekunden er hochgenommen wurde. Das Pi-Programm liest deshalb zwischen den Karten weiter mit
+  (Tabelle `einnahmen`, siehe [Datenbank.md](Datenbank.md#becherbestätigung)).
+- Fehlt der Becher, wartet der ESP32 pro Auftrag höchstens 15 s („Becher bitte hinstellen“).
+  Kommt er nicht, meldet er `FEHLER kein_becher`. Wird er mittendrin weggenommen, bricht er ab
+  und meldet `BECHER 17 abgebrochen` und `FERTIG` mit dem, was bis dahin kam. Beides passt in die Wartezeit des Pi
+  (20 s + 5 s pro Tablette).
 
 ### Alternative: drei Kabel statt USB
 

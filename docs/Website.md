@@ -35,6 +35,24 @@ Aussehen in `pi/static/style.css`. Kein Internet nötig, alles liegt auf dem Pi.
 - **Heute zurücksetzen** (für die Demo): löscht die heutigen Ausgaben. Gibt es auf der Übersicht
   und im Demo-Dashboard.
 
+## Servos kalibrieren – `/admin/servos`
+
+Für jede Kammer: Bei **Grundstellung** fährt der Servo mit ◀ ▶ (1°) und « » (5°) live mit, bis die
+Kammer genau in der Grundstellung steht. Bei **Drehung** stellt man ein, wie weit er zur Ausgabe
+dreht (10–180°, Start 90°); dabei fährt er gleich zur neuen Ausgabeposition. Die Richtung (zu
+kleineren oder größeren Winkeln) wählt man pro Kammer. „Ausgabe zeigen“ fährt probehalber dorthin,
+„Zurück zur Grundstellung“ wieder zurück.
+**Speichern** legt die Werte in `kammern` ab (`ruhe_winkel`, `drehung`, `richtung`); `pillcard.py`
+schickt sie dem ESP32 (`WINKEL …`), der sie ab der nächsten Ausgabe nutzt. Nicht gespeicherte
+Änderungen sind markiert. Läge die Ausgabe außerhalb 0–180°, lässt sich nicht speichern: dann die
+Drehung verkleinern, die Richtung umstellen oder das Servohorn eine Zacke versetzen.
+
+**Probe-Ausgabe** gibt mit den gespeicherten Werten einmal aus (fällt eine echte Tablette), ohne
+Eintrag im Kalender und ohne den Vorrat zu ändern.
+
+Die Website steuert den ESP32 nicht selbst: Sie legt Befehle in `servo_befehl` ab, `pillcard.py`
+holt sie ab. Läuft PillCard nicht, zeigt die Seite einen Hinweis.
+
 ## Demo-Dashboard – `/admin/demo`
 
 Für Präsentation und Beamer, nur mit dem Passwort der Verwaltung. Die Seite holt sich alle

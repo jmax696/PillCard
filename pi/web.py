@@ -511,7 +511,7 @@ def nutzer_bearbeiten(nutzer_id):
 @admin_noetig
 def nutzer_loeschen(nutzer_id):
     with db():
-        for tabelle in ("anpassung", "plan", "ausgaben"):
+        for tabelle in ("anpassung", "plan", "ausgaben", "einnahmen"):
             db().execute(f"DELETE FROM {tabelle} WHERE nutzer_id = ?", (nutzer_id,))
         db().execute("DELETE FROM nutzer WHERE id = ?", (nutzer_id,))
     flash("Nutzer gelöscht.", "ok")
@@ -621,6 +621,64 @@ def kammer_rezept(nr):
     flash(f"Kammer {nr} enthält jetzt {name}: {wer} bekommt {pro_tag} pro Tag, {vorrat} Tabletten eingefüllt. "
           "Die Leer-LED geht in ein paar Sekunden aus.", "ok")
     return redirect(url_for("admin_kammern"))
+
+
+# ---------- Servos kalibrieren ----------
+
+def servo_kammer(nr):
+    kammer = next((k for k in datenbank.servo_winkel(db()) if k["nr"] == nr), None)
+    if not kammer:
+        abort(404)
+    return kammer
+
+
+@app.route("/admin/servos")
+@admin_noetig
+def admin_servos():
+    return render_template("admin_servos.html", kammern=datenbank.servo_winkel(db()),
+                           drehung_min=datenbank.DREHUNG_MIN, drehung_max=datenbank.DREHUNG_MAX)
+
+
+@app.route("/admin/servos/<int:nr>/bewegen", methods=["POST"])
+@admin_noetig
+def servo_bewegen(nr):
+    """Fährt den Servo live auf einen Winkel (nichts wird gespeichert)."""
+    servo_kammer(nr)
+    winkel = zahl(request.form.get("winkel"), -1)
+    if not 0 <= winkel <= 180:
+        abort(400)
+    datenbank.servo_befehl(db(), f"servo {nr} {winkel}")
+    return jsonify(winkel=winkel, haengt=datenbank.servo_befehle_haengen(db()))
+
+
+@app.route("/admin/servos/<int:nr>/probe", methods=["POST"])
+@admin_noetig
+def servo_probe(nr):
+    """Eine Ausgabe mit den gespeicherten Winkeln, wie bei einer Karte (ohne Eintrag, ohne Vorrat)."""
+    servo_kammer(nr)
+    datenbank.servo_befehl(db(), f"probe {nr}")
+    return jsonify(haengt=datenbank.servo_befehle_haengen(db()))
+
+
+@app.route("/admin/servos/<int:nr>/speichern", methods=["POST"])
+@admin_noetig
+def servo_speichern(nr):
+    servo_kammer(nr)
+    ruhe = zahl(request.form.get("winkel"), -1)
+    richtung = -1 if request.form.get("richtung") == "-1" else 1
+    drehung = zahl(request.form.get("drehung"), -1)
+    if datenbank.grundstellung_speichern(db(), nr, ruhe, richtung, drehung):
+        flash(f"Kammer {nr}: Grundstellung {ruhe}°, Drehung {drehung}°, Ausgabe bei {ruhe + richtung * drehung}°. "
+              "Der Servo übernimmt das in ein paar Sekunden.", "ok")
+    elif not datenbank.DREHUNG_MIN <= drehung <= datenbank.DREHUNG_MAX:
+        flash(f"Kammer {nr}: Die Drehung muss zwischen {datenbank.DREHUNG_MIN}° und {datenbank.DREHUNG_MAX}° "
+              "liegen.", "fehler")
+    else:
+        von, bis = datenbank.ruhe_bereich(richtung, drehung)
+        flash(f"Kammer {nr}: Bei {drehung}° Drehung muss die Grundstellung in dieser Richtung zwischen {von}° "
+              f"und {bis}° liegen, sonst passt die Ausgabe nicht mehr. Notfalls das Servohorn eine Zacke "
+              "versetzen.", "fehler")
+    return redirect(url_for("admin_servos"))
 
 
 @app.route("/admin/reset", methods=["POST"])

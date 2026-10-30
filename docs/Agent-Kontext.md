@@ -38,7 +38,7 @@ Arduino Uno liegt als Reserve da, RC522 lief am Uno nie (0x00). Nicht mehr verfo
 | Servo Kammer 1 / 2 / 3 (Signal) | IO25 / IO26 / IO27 |
 | LED grün / rot | IO16 / IO17 |
 | Lichtschranken (später) | IO34 / IO35 / IO36 |
-| Becherkontakt (später) | IO13 (INPUT_PULLUP) |
+| Becherkontakt | IO13 (INPUT_PULLUP), Fläche A an GND, Fläche B über 1 kΩ; in `PillCard_Demo` eingebaut, Kupferband noch nicht verbaut |
 
 Wichtig: Das Plus des Netzteilmoduls geht **nie** an den ESP32, aber **GND von ESP32 und Schiene müssen verbunden sein**.
 

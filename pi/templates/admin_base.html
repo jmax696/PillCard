@@ -3,6 +3,7 @@
   {% if ist_admin %}
     <a href="{{ url_for('admin') }}" {{ 'aria-current=page' if request.endpoint == 'admin' }}>Übersicht</a>
     <a href="{{ url_for('admin_kammern') }}" {{ 'aria-current=page' if request.endpoint == 'admin_kammern' }}>Kammern</a>
+    <a href="{{ url_for('admin_servos') }}" {{ 'aria-current=page' if request.endpoint == 'admin_servos' }}>Servos</a>
     <a href="{{ url_for('demo') }}" {{ 'aria-current=page' if request.endpoint == 'demo' }}>Demo</a>
     <form method="post" action="{{ url_for('admin_logout') }}" class="inline">
       <input type="hidden" name="csrf" value="{{ csrf }}">

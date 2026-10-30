@@ -385,3 +385,12 @@ label.rezept-med input { margin-top: .25rem; flex: none; }
 label.rezept-med strong { display: block; }
 label.rezept-med small { display: block; margin: .15rem 0 .3rem; }
 .kammer-aktion { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+
+/* Servos kalibrieren */
+.servo-stand { display: flex; align-items: center; justify-content: center; gap: .6rem; margin: .8rem 0 .4rem; }
+.servo-winkel { min-width: 5.5rem; text-align: center; font-size: 2.4rem; font-weight: 800; }
+.servo-info { text-align: center; margin: 0 0 1rem; }
+.servo-info .marke-fehler { margin-left: .4rem; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.servo-titel { text-align: center; font-weight: 600; margin: .8rem 0 0; color: var(--leise); }
+.servo-titel + .servo-stand { margin-top: .3rem; }
