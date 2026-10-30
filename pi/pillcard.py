@@ -74,7 +74,7 @@ class Esp:
         if zeile.split(" ")[0] in ANTWORTEN:
             print(f"  <- ESP32: {zeile}")
             teile = zeile.split()
-            # "BECHER 17 genommen 30": vor 30 s hochgenommen und seitdem weg. Kann jederzeit kommen,
+            # "BECHER 17 genommen 10": vor 10 s hochgenommen und seitdem weg. Kann jederzeit kommen,
             # auch mitten in einem neuen Auftrag, darum erst sammeln
             if (len(teile) in (3, 4) and teile[0] == "BECHER" and teile[2] == "genommen"
                     and all(t.isdigit() for t in teile[1:2] + teile[3:])):

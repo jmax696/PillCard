@@ -26,11 +26,11 @@
 //
 // Antworten an den Pi (stehen auch im Seriellen Monitor):
 //   BEREIT | OK 17 | TABLETTE 17 K1 ok | TABLETTE 17 K3 fehlt | FERTIG 17 K1=1 K3=1 | FEHLER <grund>
-//   BECHER 17 genommen 30 | BECHER 17 abgebrochen
+//   BECHER 17 genommen 10 | BECHER 17 abgebrochen
 //   Kommt der Becher nicht, bevor die erste Tablette fällt: FEHLER kein_becher.
 //   Wird er mittendrin weggenommen: Abbruch, BECHER 17 abgebrochen, dann FERTIG mit dem, was bis dahin kam.
 //   Nach FERTIG zeigt das Display "Ihre Medikation liegt bereit", bis der Becher genommen wird.
-//   Genommen = 30 s lang weg (BECHER_ENTNAHME_MS), dann kommt BECHER 17 genommen 30
+//   Genommen = 10 s lang weg (BECHER_ENTNAHME_MS), dann kommt BECHER 17 genommen 10
 //   (Zahl = vor so vielen Sekunden hochgenommen). Wird er vorher zurückgestellt, zählt es nicht.
 //   Kommt vorher ein neuer Auftrag, endet die Beobachtung ohne Meldung (Becher blieb stehen).
 //
@@ -101,7 +101,7 @@ const uint16_t BECHER_DA_MS     = 50;     // so lange durchgehend Kontakt = Bech
 const uint16_t BECHER_WEG_MS    = 400;    // so lange durchgehend offen = weg (fallende Tablette lässt ihn wackeln)
 const uint16_t BECHER_WARTEN_MS = 15000;  // pro Auftrag höchstens so lange auf den Becher warten.
                                           // Nicht erhöhen: der Pi wartet nur 20 s + 5 s pro Tablette auf FERTIG
-const uint32_t BECHER_ENTNAHME_MS = 30000;  // nach der Ausgabe: so lange weg = genommen (kurz anheben zählt nicht)
+const uint32_t BECHER_ENTNAHME_MS = 10000;  // nach der Ausgabe: so lange weg = genommen (kurz anheben zählt nicht)
 const uint16_t ABHOL_WECHSEL_MS   = 4000;   // "liegt bereit" und "Fehlt: K1" wechseln sich so ab
 
 // ===== Pins =====

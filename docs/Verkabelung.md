@@ -85,7 +85,7 @@ Worauf das Pi-Programm achten muss:
   dann Aufträge schicken.
 - Über USB kommen auch Hilfstexte für den Seriellen Monitor. Nur Zeilen auswerten, die mit
   `OK`, `TABLETTE`, `FERTIG`, `FEHLER`, `BECHER` oder `BEREIT` anfangen.
-- `BECHER 17 genommen 30` kommt erst nach `FERTIG`, wenn der Becher 30 s lang weg ist, also
+- `BECHER 17 genommen 10` kommt erst nach `FERTIG`, wenn der Becher 10 s lang weg ist, also
   auch lange nach dem Auftrag. Die Zahl sagt, vor wie vielen Sekunden er hochgenommen wurde. Das Pi-Programm liest deshalb zwischen den Karten weiter mit
   (Tabelle `einnahmen`, siehe [Datenbank.md](Datenbank.md#becherbestätigung)).
 - Fehlt der Becher, wartet der ESP32 pro Auftrag höchstens 15 s („Becher bitte hinstellen“).
