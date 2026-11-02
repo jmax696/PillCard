@@ -1,0 +1,9 @@
+{
+  "additionalFiles": "",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "",
+  "fqbn": "esp32:esp32:esp32",
+  "hardwareFolders": "/Users/maxjackle/Library/Arduino15/packages/esp32/hardware/esp32/3.3.12,/Users/maxjackle/Library/Arduino15/packages/esp32/hardware/esp32/3.3.12",
+  "otherLibrariesFolders": "/Users/maxjackle/Documents/Arduino/libraries",
+  "sketchLocation": "/Users/maxjackle/Projekte/HCI/PillCard/arduino-ide/PillCard_Demo"
+}
