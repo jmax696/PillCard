@@ -290,6 +290,8 @@ button.klein { padding: .35rem .8rem; font-size: .9rem; }
 .kennzahl.alarm .wert { color: var(--fehler); }
 
 .dash-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 0 1.1rem; }
+.demo-spalte { margin: .4rem 0 .8rem; font-size: .8rem; font-weight: 700; letter-spacing: .06em;
+               text-transform: uppercase; color: var(--haupt-dunkel); }
 
 .status-marke { display: inline-block; border-radius: 99px; padding: .1rem .65rem; font-size: .85rem;
                 font-weight: 700; white-space: nowrap; background: #eceae6; color: var(--leise); }

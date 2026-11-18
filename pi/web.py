@@ -2,9 +2,9 @@
 
 Verwaltung (/admin): neue Karten anlernen, Nutzer und Dosierung bearbeiten, Kammern und Vorrat.
 Nutzerbereich (/):   Login, heutige Dosis je nach Tagesform anpassen, Kalender, Vorratswarnung.
-Demo (/admin/demo):  Live-Dashboard für die Präsentation, holt sich alle 2 s neue Daten.
+Demo (/admin/demo):  Ansicht der erfundenen Nutzerin Erika (demo_nutzer.py), unabhängig von der Datenbank.
 
-Beide Teile arbeiten auf derselben pillcard.db wie pillcard.py.
+Verwaltung und Nutzerbereich arbeiten auf derselben pillcard.db wie pillcard.py.
 
 Start (im Ordner ~/pillcard):
     venv/bin/python web.py           normaler Betrieb (waitress)
@@ -25,6 +25,7 @@ from flask import Flask, abort, flash, g, jsonify, redirect, render_template, re
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import datenbank
+import demo_nutzer
 import erezept
 
 ORDNER = Path(__file__).resolve().parent
@@ -35,7 +36,6 @@ MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
           "August", "September", "Oktober", "November", "Dezember"]
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 WOCHENTAGE_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
-DEMO_AKTUALISIEREN = 2   # s, so oft holt das Demo-Dashboard neue Daten
 REZEPT_MAX_ZEICHEN = 20000   # ein E-Rezept-QR-Code hat höchstens ein paar tausend Zeichen
 
 
@@ -721,82 +721,68 @@ def servo_speichern(nr):
 def admin_reset():
     anzahl = datenbank.heute_zuruecksetzen(db())
     flash(f"Heutige Ausgaben gelöscht ({anzahl} Einträge). Alle dürfen heute wieder.", "ok")
-    return redirect(url_for("demo" if request.form.get("weiter") == "demo" else "admin"))
+    return redirect(url_for("admin"))
 
 
-# ---------- Demo-Dashboard (für Präsentation, aktualisiert sich selbst) ----------
+# ---------- Demo: Ansicht eines erfundenen Nutzers (unabhängig von der Datenbank) ----------
 
 @app.route("/admin/demo")
 @admin_noetig
 def demo():
-    return render_template("demo.html", aktualisieren=DEMO_AKTUALISIEREN)
+    """Zeigt, was Demo-Nutzerin Erika in der App sieht und was PillCard über sie speichert.
+    Die Daten kommen aus demo_nutzer.py, nicht aus pillcard.db; Verwaltung und Reset ändern nichts daran."""
+    jetzt = datetime.datetime.now()
+    d0 = jetzt.date()
+    d = demo_nutzer.daten(jetzt)
 
+    woche_ = []
+    for i in range(6, -1, -1):
+        t = d0 - datetime.timedelta(days=i)
+        woche_.append({"datum": t, "wt": WOCHENTAGE[t.weekday()], "heute": i == 0,
+                       "eintrag": d["tage"].get(t.isoformat())})
 
-@app.route("/admin/demo/daten")
-@admin_noetig
-def demo_daten():
-    """Alles, was das Dashboard zeigt, als JSON. Liest nur, ändert nichts."""
-    d0 = heute()
-    vor7 = d0 - datetime.timedelta(days=7)
+    # Kalender wie /mein/kalender, nur aus den Demo-Daten
+    try:
+        erster = datetime.datetime.strptime(request.args.get("monat", ""), "%Y-%m").date()
+    except ValueError:
+        erster = d0.replace(day=1)
+    gitter = calendar.Calendar().monthdatescalendar(erster.year, erster.month)
+    wochen = [[{"datum": t, "im_monat": t.month == erster.month, "heute": t == d0,
+                "eintrag": d["tage"].get(t.isoformat())} for t in w] for w in gitter]
+    im_monat = [e for tag, e in d["tage"].items() if tag.startswith(f"{erster:%Y-%m}")]
+    bilanz = {"abgeholt": sum(e["status"] != "verpasst" for e in im_monat), "tage": len(im_monat),
+              "probleme": sum(e["status"] == "teil" for e in im_monat)}
+    gewaehlt = request.args.get("tag")
+    try:
+        gewaehlt_datum = datetime.date.fromisoformat(gewaehlt or "")
+    except ValueError:
+        gewaehlt, gewaehlt_datum = None, None
+    details = [a for a in d["ausgaben"] if a["datum"] == gewaehlt_datum]
+    vorher = (erster - datetime.timedelta(days=1)).replace(day=1)
+    nachher = (erster + datetime.timedelta(days=32)).replace(day=1)
 
-    nutzer, abgeholt7, tage7 = [], 0, 0
-    for n in db().execute("SELECT * FROM nutzer ORDER BY name"):
-        meds = medikamente(n["id"])
-        if not meds:
-            continue   # ohne Plan nichts zu zeigen
-        um = datenbank.heute_genommen_um(db(), n["id"])
-        tage = tagesstatus(n["id"], vor7, d0)
-        heute_e = tage.get(d0.isoformat())
-        if um:
-            status = heute_e["status"] if heute_e else "ok"
-        else:
-            status = "offen" if any(m["heute"] > 0 for m in meds) else "nichts"
-        letzte7 = [e for t, e in tage.items() if t < d0.isoformat()]
-        abgeholt7 += sum(e["status"] != "verpasst" for e in letzte7)
-        tage7 += len(letzte7)
-        nutzer.append({
-            "name": n["name"], "status": status, "um": um,
-            "dosis": [{"medikament": m["medikament"], "anzahl": m["heute"], "angepasst": m["heute"] != m["plan"]}
-                      for m in meds if m["heute"] > 0],
-            "woche": [{"wt": t["wt"], "nr": t["datum"].day, "heute": t["heute"],
-                       "status": t["eintrag"]["status"] if t["eintrag"] else None} for t in woche(n["id"])],
-        })
-
-    heute_summe = db().execute(
-        """SELECT COALESCE(SUM(erhalten), 0) AS tabletten,
-                  COUNT(DISTINCT CASE WHEN erhalten IS NULL THEN nutzer_id || ' ' || zeit END) AS fehler
-           FROM ausgaben WHERE DATE(zeit) = ?""", (d0.isoformat(),)).fetchone()
-
-    pro_tag = {r["tag"]: r["tabletten"] for r in db().execute(
-        """SELECT DATE(zeit) AS tag, COALESCE(SUM(erhalten), 0) AS tabletten FROM ausgaben
-           WHERE DATE(zeit) >= ? GROUP BY tag""", ((d0 - datetime.timedelta(days=13)).isoformat(),))}
-    verlauf = []
-    for i in range(13, -1, -1):
-        d = d0 - datetime.timedelta(days=i)
-        verlauf.append({"wt": WOCHENTAGE[d.weekday()], "kurz": f"{d:%d.%m.}", "heute": i == 0,
-                        "tabletten": pro_tag.get(d.isoformat(), 0)})
-
-    # Eine Ausgabe = alle Zeilen eines Nutzers mit derselben Zeit
-    ereignisse = [dict(r) for r in db().execute(
-        """SELECT MAX(a.id) AS id, n.name, a.zeit, SUM(a.bestellt) AS bestellt,
-                  SUM(COALESCE(a.erhalten, 0)) AS erhalten, SUM(a.erhalten IS NULL) AS fehler,
-                  GROUP_CONCAT(COALESCE(a.erhalten, a.bestellt) || '× ' || k.medikament, ', ') AS teile
-           FROM ausgaben a JOIN nutzer n ON n.id = a.nutzer_id JOIN kammern k ON k.nr = a.kammer
-           GROUP BY a.nutzer_id, a.zeit ORDER BY a.zeit DESC, id DESC LIMIT 7""")]
-    for e in ereignisse:
-        e["status"] = "fehler" if e["fehler"] else ("teil" if e["erhalten"] < e["bestellt"] else "ok")
-        e["uhr"] = e["zeit"][11:16]
-        e["heute"] = e["zeit"][:10] == d0.isoformat()
-        e["tag"] = "heute" if e["heute"] else f"{e['zeit'][8:10]}.{e['zeit'][5:7]}."
-
-    return jsonify(
-        uhrzeit=f"{datetime.datetime.now():%H:%M:%S}", datum=datum_lang(d0),
-        kennzahlen={"versorgt": sum(n["um"] is not None for n in nutzer), "nutzer": len(nutzer),
-                    "tabletten": heute_summe["tabletten"], "fehler": heute_summe["fehler"],
-                    "abgeholt7": round(100 * abgeholt7 / tage7) if tage7 else None},
-        nutzer=nutzer, vorrat=datenbank.vorrat_status(db()), verlauf=verlauf, ereignisse=ereignisse,
-        scan_wartet=datenbank.scan_offen(db()) is not None,
-    )
+    morgen = d0 + datetime.timedelta(days=1)
+    # Protokoll: eine Zeile pro Tag und Ausgabe, neueste zuerst, verpasste Tage mit
+    protokoll = []
+    for i in range(10):
+        t = d0 - datetime.timedelta(days=i)
+        zeilen = [a for a in d["ausgaben"] if a["datum"] == t]
+        eintrag = d["tage"].get(t.isoformat())
+        if not zeilen and not eintrag:
+            continue   # heute noch nicht abgeholt
+        protokoll.append({"tag": "heute" if i == 0 else f"{WOCHENTAGE[t.weekday()]} {t:%d.%m.}",
+                          "uhr": zeilen[0]["uhr"] if zeilen else None, "teile": zeilen,
+                          "status": eintrag["status"] if eintrag else "ok",
+                          "bestellt": sum(a["bestellt"] for a in zeilen),
+                          "erhalten": sum(a["erhalten"] for a in zeilen)})
+    return render_template(
+        "demo.html", **d, gruss=gruss(), datum_heute=datum_lang(d0), datum_morgen=f"{morgen:%d.%m.}",
+        wochentag_morgen=WOCHENTAGE_LANG[morgen.weekday()], woche=woche_,
+        anpassbar=[m for m in d["meds"] if m["anpassbar"]], protokoll=protokoll,
+        wochen=wochen, wochentage=WOCHENTAGE, titel=f"{MONATE[erster.month - 1]} {erster.year}",
+        monat=f"{erster:%Y-%m}", vorher=f"{vorher:%Y-%m}", nachher=f"{nachher:%Y-%m}",
+        ist_aktuell=erster == d0.replace(day=1), bilanz=bilanz, gewaehlt=gewaehlt, details=details,
+        gewaehlt_lang=datum_lang(gewaehlt_datum) if gewaehlt_datum else "")
 
 
 @app.template_filter("datum")

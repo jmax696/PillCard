@@ -2,236 +2,292 @@
 {% block titel %}Demo – PillCard{% endblock %}
 {% block breite %}breit{% endblock %}
 {% block inhalt %}
-<div class="dash-kopf">
-  <div>
-    <h1>PillCard live</h1>
-    <p class="leise" id="d-datum">&nbsp;</p>
-  </div>
-  <div class="dash-uhr">
-    <span id="d-uhr">--:--</span>
-    <span class="live" id="d-live"><span class="live-punkt" aria-hidden="true"></span><span id="d-live-text">verbinde …</span></span>
-  </div>
-  <div class="dash-knoepfe">
-    <button type="button" class="zweit klein" id="vollbild">⛶ Vollbild</button>
-    <form method="post" action="{{ url_for('admin_reset') }}" class="inline"
-          onsubmit="return confirm('Alle heutigen Ausgaben löschen?')">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <input type="hidden" name="weiter" value="demo">
-      <button class="zweit klein">Heute zurücksetzen</button>
-    </form>
-  </div>
-</div>
-
-<div id="d-ereignis" class="ereignis" role="status" hidden></div>
-<p id="d-scan" class="scan wartet dash-scan" hidden>
-  <span class="scan-text"><strong>Anlernen läuft: der Leser wartet auf eine neue Karte</strong></span>
-</p>
-
-<div class="dash-kennzahlen">
-  <div class="kennzahl"><span class="leise">Heute abgeholt</span><span class="wert" id="k-versorgt">–</span><span class="leise" id="k-versorgt-text">&nbsp;</span></div>
-  <div class="kennzahl"><span class="leise">Tabletten heute</span><span class="wert" id="k-tabletten">–</span><span class="leise">laut Mikrofon gezählt</span></div>
-  <div class="kennzahl"><span class="leise">Abgeholt, letzte 7 Tage</span><span class="wert" id="k-abgeholt">–</span><span class="leise">der geplanten Tage</span></div>
-  <div class="kennzahl" id="k-fehler-kachel"><span class="leise">Gerätefehler heute</span><span class="wert" id="k-fehler">–</span><span class="leise" id="k-fehler-text">&nbsp;</span></div>
+{% set vorname = nutzer.name.split()[0] %}
+<div class="meldung warnung">
+  <strong>Demo-Nutzerin mit erfundenen Daten.</strong>
+  {{ nutzer.name }} gibt es nicht. Die Seite liest nichts aus der Datenbank: „Heute zurücksetzen“, neue oder
+  gelöschte Nutzer in der Verwaltung ändern hier nichts.
 </div>
 
 <div class="dash-raster">
-  <section class="karte">
-    <h2>Nutzer heute</h2>
-    <div id="d-nutzer" class="dash-nutzer"><p class="leise">Lade …</p></div>
-  </section>
 
-  <section class="karte">
-    <h2>Letzte Ausgaben</h2>
-    <ol id="d-feed" class="feed"></ol>
-  </section>
+{# ---------- Links: was Erika selbst in der App sieht (wie /mein) ---------- #}
+<div>
+  <p class="demo-spalte">Das sieht {{ vorname }} in der App</p>
+  <div class="begruessung">
+    <h1>{{ gruss }}, {{ nutzer.name }}</h1>
+    <p class="leise">{{ datum_heute }}</p>
+  </div>
 
-  <section class="karte">
-    <h2>Tabletten pro Tag – letzte 14 Tage</h2>
-    <div class="saeulen-rahmen">
-      <div id="d-verlauf" class="saeulen" role="img" aria-label="Säulendiagramm: ausgegebene Tabletten pro Tag"></div>
-      <div id="d-tooltip" class="tooltip" hidden></div>
+  <section class="karte held {{ zustand }}">
+    <div class="held-kopf">
+      <span class="held-symbol" aria-hidden="true">
+        {%- if zustand == 'erledigt' %}✓{% elif zustand == 'offen' %}●{% else %}!{% endif -%}
+      </span>
+      <div>
+        {% if zustand == 'erledigt' %}
+          <p class="held-titel">Heute erledigt</p>
+          <p class="held-text">Um {{ genommen_um }} Uhr ausgegeben. Die nächste Ausgabe gibt es morgen.</p>
+        {% elif zustand == 'teil' %}
+          <p class="held-titel">Nicht alle Tabletten sind herausgekommen</p>
+          <p class="held-text">Um {{ genommen_um }} Uhr ausgegeben. Was fehlt, steht unten.</p>
+        {% else %}
+          <p class="held-titel">Ihre Tabletten liegen bereit</p>
+          <p class="held-text">Halten Sie Ihre Karte an das Gerät.</p>
+        {% endif %}
+      </div>
     </div>
-    <details class="tabellenansicht">
-      <summary>Als Tabelle</summary>
-      <table class="tabelle"><thead><tr><th>Tag</th><th>Tabletten</th></tr></thead><tbody id="d-verlauf-tabelle"></tbody></table>
-    </details>
+    <ul class="liste">
+      {% if genommen_um %}
+        {% for a in heute_ausgaben %}
+        <li><span>{{ a.medikament }}</span>
+          <span class="rechts">{% if a.erhalten < a.bestellt %}<span class="marke-warn">! {{ a.erhalten }} von {{ a.bestellt }}</span>
+            {% else %}{{ a.erhalten }}×{% endif %}</span></li>
+        {% endfor %}
+      {% else %}
+        {% for m in meds if m.heute > 0 %}
+        <li><span>{{ m.medikament }}</span><span class="rechts">{{ m.heute }}×</span></li>
+        {% endfor %}
+      {% endif %}
+    </ul>
   </section>
 
-  <section class="karte">
-    <div class="zeilenkopf eng">
-      <h2>Vorrat</h2>
-      <a class="mehr" href="{{ url_for('admin_kammern') }}">Kammern ›</a>
-    </div>
-    <div id="d-vorrat" class="dash-vorrat"></div>
+  {% for k in knapp %}
+  <div class="meldung warnung">
+    <strong>Vorrat geht zu Ende:</strong> {{ k.medikament }} – noch {{ k.vorrat }} Tabletten, reicht etwa
+    {{ k.reicht_tage }} {{ 'Tag' if k.reicht_tage == 1 else 'Tage' }}. Bitte rechtzeitig nachbestellen.
+  </div>
+  {% endfor %}
+
+  <div class="zwei-spalten">
+    <section class="karte">
+      <h2>Morgen, {{ wochentag_morgen }}</h2>
+      <ul class="liste klein">
+        {% for m in meds if m.morgen > 0 %}
+        <li><span>{{ m.medikament }}
+            {% if m.morgen != m.plan %}<small class="marke-info">angepasst</small>{% endif %}</span>
+          <span class="rechts">{{ m.morgen }}×</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="karte">
+      <h2>Letzte 7 Tage</h2>
+      <ol class="wochenleiste">
+        {% for t in woche %}
+        {% set e = t.eintrag %}
+        <li class="{{ e.status if e }} {{ 'heute' if t.heute }}">
+          <span class="wt">{{ t.wt }}</span>
+          <span class="nr">{{ t.datum.day }}.</span>
+          <span class="symbol" aria-label="
+            {%- if not e %}noch offen{% elif e.status == 'ok' %}genommen{% elif e.status == 'teil' %}weniger als geplant
+            {%- else %}nicht abgeholt{% endif %}">
+            {%- if not e %}·{% elif e.status == 'ok' %}✓{% elif e.status == 'teil' %}!{% else %}–{% endif -%}
+          </span>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+
+  <section class="karte" id="anpassen">
+    <h2>Dosis nach Tagesform anpassen</h2>
+    <p class="leise">Nur für Medikamente, die {{ vorname }} selbst ändern darf.</p>
+    <form id="demo-anpassen">
+      <fieldset class="tagwahl">
+        <legend>Für welchen Tag?</legend>
+        <label class="wahl"><input type="radio" name="tag" value="heute"
+          {% if genommen_um %}disabled{% else %}checked{% endif %}>
+          <span>Heute{% if genommen_um %} <small>(schon ausgegeben)</small>{% endif %}</span></label>
+        <label class="wahl"><input type="radio" name="tag" value="morgen"
+          {% if genommen_um %}checked{% endif %}> <span>Morgen <small>({{ datum_morgen }})</small></span></label>
+      </fieldset>
+      {% for m in anpassbar %}
+      {% set aktuell = m.morgen if genommen_um else m.heute %}
+      <div class="zaehler" data-max="{{ m.grenze }}" data-plan="{{ m.plan }}">
+        <span class="name">{{ m.medikament }}
+          <small>normal {{ m.plan }}, erlaubt 0 bis {{ m.grenze }}
+            <span class="geaendert" hidden> · geändert</span></small></span>
+        <button type="button" class="rund" data-schritt="-1" aria-label="weniger {{ m.medikament }}">−</button>
+        <input type="number" min="0" max="{{ m.grenze }}" value="{{ aktuell }}"
+               data-heute="{{ m.heute }}" data-morgen="{{ m.morgen }}" inputmode="numeric"
+               aria-label="Anzahl {{ m.medikament }}">
+        <button type="button" class="rund" data-schritt="1" aria-label="mehr {{ m.medikament }}">+</button>
+      </div>
+      {% endfor %}
+      <button class="gross">Speichern</button>
+      <p id="demo-gespeichert" class="meldung ok" role="status" hidden></p>
+    </form>
   </section>
 </div>
 
+{# ---------- Rechts: was PillCard dabei über Erika sammelt ---------- #}
+<div>
+  <p class="demo-spalte">Das speichert PillCard über {{ vorname }}</p>
+
+  <section class="karte">
+    <h2>Stammdaten und Plan</h2>
+    <table class="tabelle">
+      <tbody>
+        <tr><td>Name</td><td><strong>{{ nutzer.name }}</strong>, {{ nutzer.alter }} Jahre</td></tr>
+        <tr><td>Benutzername</td><td><code>{{ nutzer.benutzername }}</code></td></tr>
+        <tr><td>Karte (NFC-UID)</td><td><code>{{ nutzer.uid }}</code></td></tr>
+        <tr><td>Nutzt PillCard seit</td><td>{{ nutzer.seit|datum }}</td></tr>
+      </tbody>
+    </table>
+    <table class="tabelle">
+      <thead><tr><th>Kammer</th><th>Medikament</th><th>Pro Tag</th><th>Selbst änderbar</th></tr></thead>
+      <tbody>
+      {% for m in meds %}
+        <tr><td>K{{ m.nr }}</td><td>{{ m.medikament }}<br><small class="leise">{{ m.wofuer }}</small></td>
+          <td>{{ m.plan }}×</td><td>{% if m.anpassbar %}ja, 0 bis {{ m.grenze }}{% else %}nein{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="karte" id="kalender">
+    <div class="monatskopf">
+      <a class="knopf" href="{{ url_for('demo', monat=vorher) }}#kalender" aria-label="voriger Monat">‹</a>
+      <h2>{{ titel }}</h2>
+      <a class="knopf" href="{{ url_for('demo', monat=nachher) }}#kalender" aria-label="nächster Monat">›</a>
+    </div>
+    <p class="bilanz">
+      <span>
+      {%- if bilanz.tage %}
+        An <strong>{{ bilanz.abgeholt }} von {{ bilanz.tage }}</strong> Tagen abgeholt
+        {%- if bilanz.probleme %}, davon {{ bilanz.probleme }} mit Problem am Gerät{% endif %}.
+      {%- else %}
+        In diesem Monat gibt es keine Einträge.
+      {%- endif -%}
+      </span>
+      {% if not ist_aktuell %}<a class="knopf klein zweit" href="{{ url_for('demo') }}#kalender">Zum aktuellen Monat</a>{% endif %}
+    </p>
+    <table class="kalender">
+      <thead><tr>{% for t in wochentage %}<th>{{ t }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for w in wochen %}
+        <tr>
+        {% for tag in w %}
+          {% set e = tag.eintrag %}
+          <td class="{{ '' if tag.im_monat else 'fremd' }} {{ 'heute' if tag.heute }} {{ e.status if e }}
+                     {{ 'gewaehlt' if gewaehlt == tag.datum.isoformat() }}">
+            <a href="{{ url_for('demo', monat=monat, tag=tag.datum.isoformat()) }}#details">
+              <span class="nr">{{ tag.datum.day }}</span>
+              {% if e %}<span class="symbol">
+                {%- if e.status == 'ok' %}✓ {{ e.erhalten }}{% elif e.status == 'teil' %}! {{ e.erhalten }}{% else %}–{% endif -%}
+              </span>{% endif %}
+            </a>
+          </td>
+        {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if gewaehlt %}
+    <div id="details">
+      <h3>{{ gewaehlt_lang }}</h3>
+      <ul class="liste">
+      {% for a in details %}
+        <li><span>{{ a.uhr }} Uhr · {{ a.medikament }}</span>
+          <span class="rechts">{% if a.erhalten < a.bestellt %}<span class="marke-warn">! {{ a.erhalten }} von {{ a.bestellt }}</span>
+            {% else %}{{ a.erhalten }}×{% endif %}</span></li>
+      {% else %}
+        <li>An diesem Tag wurde nichts ausgegeben.</li>
+      {% endfor %}
+      </ul>
+    </div>
+    {% else %}
+    <p class="leise">Auf einen Tag tippen, um zu sehen, was es gab.</p>
+    {% endif %}
+    <ul class="legende">
+      <li><span class="punkt ok"></span>✓ genommen (Zahl = Tabletten)</li>
+      <li><span class="punkt teil"></span>! weniger ausgegeben als geplant</li>
+      <li><span class="punkt verpasst"></span>– nicht abgeholt</li>
+    </ul>
+  </section>
+
+  <section class="karte">
+    <h2>Ausgabe-Protokoll, letzte 10 Tage</h2>
+    <p class="leise">Wann die Karte vorgehalten wurde und was herauskam. „Gezählt“ ist, was das Mikrofon im Gerät
+      fallen hörte; der Becher wird vor jeder Ausgabe geprüft.</p>
+    <table class="tabelle">
+      <thead><tr><th>Wann</th><th>Ausgegeben</th><th>Gezählt</th><th>Becher</th></tr></thead>
+      <tbody>
+      {% for p in protokoll %}
+        <tr>
+          <td><strong>{{ p.tag }}</strong><br><small class="leise">{{ p.uhr ~ ' Uhr' if p.uhr else 'keine Ausgabe' }}</small></td>
+          {% if p.teile %}
+          <td>{% for a in p.teile %}{{ a.erhalten if a.erhalten < a.bestellt else a.bestellt }}× {{ a.medikament }}
+              {%- if a.erhalten < a.bestellt %} <span class="marke-warn">{{ a.bestellt - a.erhalten }} fehlt</span>{% endif %}
+              {%- if a.angepasst %} <small class="marke-info">angepasst</small>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+          <td>{% if p.erhalten < p.bestellt %}<span class="marke-warn">! {{ p.erhalten }} von {{ p.bestellt }}</span>
+            {% else %}<span class="marke-ok">✓ {{ p.erhalten }} von {{ p.bestellt }}</span>{% endif %}</td>
+          <td>erkannt</td>
+          {% else %}
+          <td colspan="3"><span class="leise">– nicht abgeholt</span></td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="karte">
+    <h2>Eigene Anpassungen</h2>
+    <table class="tabelle">
+      <thead><tr><th>Für</th><th>Medikament</th><th>Statt</th><th>Eingestellt</th></tr></thead>
+      <tbody>
+      {% for a in anpassungen %}
+        <tr><td>{{ a.fuer|datum }}</td><td>{{ a.anzahl }}× Magnesium 300 mg</td><td>1×</td><td>{{ a.eingestellt }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="karte">
+    <h2>Vorrat ihrer Kammern</h2>
+    <ul class="liste">
+    {% for k in vorrat %}
+      <li><span>K{{ k.nr }} · {{ k.medikament }}<br><small class="leise">{{ k.bedarf }} pro Tag · reicht
+        {{ k.reicht_tage }} Tage</small></span>
+        <span class="rechts">{{ k.vorrat }}{% if k.knapp %} <span class="marke-fehler">bald leer</span>{% endif %}</span></li>
+    {% endfor %}
+    </ul>
+  </section>
+</div>
+
+</div>
+
 <script>
-(function () {
-  var QUELLE = "{{ url_for('demo_daten') }}", TAKT = {{ aktualisieren }} * 1000, VOLL_TAGE = 30;
-  var STATUS = {
-    ok: ["✓", "genommen"], teil: ["!", "weniger als geplant"], fehler: ["⚠", "Fehler am Gerät"],
-    offen: ["●", "noch offen"], nichts: ["–", "heute nichts"], verpasst: ["–", "nicht abgeholt"]
-  };
-  var letzteId = null, ereignisTimer = null;
-
-  function $(id) { return document.getElementById(id); }
-  function esc(t) {
-    return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  // Wie auf /mein, nur ohne Speichern: Plus/Minus, Hinweis "geändert", Tageswechsel
+  function markieren(z) {
+    var feld = z.querySelector("input");
+    z.querySelector(".geaendert").hidden = (+feld.value === +z.dataset.plan);
+  }
+  document.querySelectorAll(".zaehler").forEach(function (z) {
+    var feld = z.querySelector("input"), max = +z.dataset.max;
+    z.querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        feld.value = Math.max(0, Math.min(max, (+feld.value || 0) + (+b.dataset.schritt)));
+        markieren(z);
+      });
     });
-  }
-  function marke(status, zusatz) {
-    var s = STATUS[status] || STATUS.nichts;
-    return '<span class="status-marke ' + status + '">' + s[0] + " " + esc(zusatz || s[1]) + "</span>";
-  }
-
-  function teile(e) { return (e.status === "fehler" ? "bestellt: " : "") + esc(e.teile); }
-
-  function nutzerZeichnen(liste) {
-    if (!liste.length) { $("d-nutzer").innerHTML = '<p class="leise">Noch niemand mit Plan angelegt.</p>'; return; }
-    $("d-nutzer").innerHTML = liste.map(function (n) {
-      var zusatz = n.um ? (STATUS[n.status] || STATUS.ok)[1] + " · " + n.um + " Uhr" : null;
-      var dosis = n.dosis.map(function (d) {
-        return '<span class="chip' + (d.angepasst ? " angepasst" : "") + '">' + d.anzahl + "× " + esc(d.medikament) +
-               (d.angepasst ? " <small>angepasst</small>" : "") + "</span>";
-      }).join("") || '<span class="leise">nichts im Plan</span>';
-      var woche = n.woche.map(function (t) {
-        var s = t.status ? STATUS[t.status] : ["·", "offen"];
-        return '<li class="' + (t.status || "") + (t.heute ? " heute" : "") + '" title="' + t.wt + " " + t.nr + ".: " + s[1] + '">' +
-               '<span class="wt">' + t.wt + '</span><span class="symbol">' + s[0] + "</span></li>";
-      }).join("");
-      return '<div class="dash-person ' + n.status + '">' +
-               '<div class="dash-person-kopf"><strong>' + esc(n.name) + "</strong>" + marke(n.status, zusatz) + "</div>" +
-               '<div class="chips">' + dosis + "</div>" +
-               '<ol class="wochenleiste mini" aria-label="letzte 7 Tage">' + woche + "</ol>" +
-             "</div>";
-    }).join("");
-  }
-
-  function feedZeichnen(liste, neuId) {
-    $("d-feed").innerHTML = liste.map(function (e) {
-      return '<li class="' + e.status + (e.heute ? " heute" : "") + (e.id === neuId ? " neu" : "") + '">' +
-               '<span class="feed-zeit"><strong>' + e.uhr + "</strong><small>" + e.tag + "</small></span>" +
-               '<span class="feed-text"><strong>' + esc(e.name) + "</strong><small>" + teile(e) + "</small></span>" +
-               marke(e.status, e.status === "ok" ? e.erhalten + " Tabl." : null) +
-             "</li>";
-    }).join("") || '<li class="leise">Noch keine Ausgaben.</li>';
-  }
-
-  function verlaufZeichnen(tage) {
-    var max = Math.max.apply(null, tage.map(function (t) { return t.tabletten; }).concat([1]));
-    var maxIndex = -1;
-    tage.forEach(function (t, i) { if (t.tabletten === max && max > 0) maxIndex = i; });
-    $("d-verlauf").innerHTML = tage.map(function (t, i) {
-      var hoehe = t.tabletten ? Math.max(3, Math.round(100 * t.tabletten / max)) : 0;
-      var beschriften = t.heute || i === maxIndex;
-      return '<div class="saeule' + (t.heute ? " heute" : "") + '" tabindex="0" data-text="' +
-               t.wt + " " + t.kurz + ": " + t.tabletten + (t.tabletten === 1 ? " Tablette" : " Tabletten") + (t.heute ? " (heute, bisher)" : "") + '">' +
-               '<div class="saeule-flaeche">' +
-                 (beschriften ? '<span class="saeule-wert" style="bottom:' + hoehe + '%">' + t.tabletten + "</span>" : "") +
-                 '<span class="saeule-balken" style="height:' + hoehe + '%"></span>' +
-               "</div>" +
-               '<span class="saeule-tag">' + (t.heute ? "heute" : t.wt) + "<br>" + t.kurz.slice(0, 3) + "</span>" +
-             "</div>";
-    }).join("");
-    $("d-verlauf-tabelle").innerHTML = tage.map(function (t) {
-      return "<tr><td>" + t.wt + " " + t.kurz + "</td><td>" + t.tabletten + "</td></tr>";
-    }).join("");
-  }
-
-  function vorratZeichnen(kammern) {
-    $("d-vorrat").innerHTML = kammern.map(function (k) {
-      var tage = k.reicht_tage, breite = tage == null ? 0 : Math.min(100, Math.round(100 * tage / VOLL_TAGE));
-      var warnTage = k.bedarf ? Math.min(100, Math.round(100 * (k.warnen_ab / k.bedarf) / VOLL_TAGE)) : null;
-      var text = k.bedarf ? k.bedarf + " pro Tag · reicht " + tage + (tage === 1 ? " Tag" : " Tage") : "von niemandem genutzt";
-      return '<div class="dash-kammer' + (k.knapp ? " knapp" : "") + '">' +
-               '<div class="dash-kammer-kopf"><span><small class="leise">Kammer ' + k.nr + "</small><br><strong>" +
-                 esc(k.medikament) + '</strong></span><span class="wert">' + k.vorrat + "</span></div>" +
-               '<div class="meter" aria-hidden="true"><span style="width:' + breite + '%"></span>' +
-                 (warnTage != null ? '<i style="left:' + warnTage + '%"></i>' : "") + "</div>" +
-               '<div class="dash-kammer-fuss"><span class="leise">' + text + "</span>" +
-                 (k.knapp ? '<span class="status-marke teil">! bald leer</span>' : "") + "</div>" +
-             "</div>";
-    }).join("");
-  }
-
-  function ereignisZeigen(e) {
-    var box = $("d-ereignis"), s = STATUS[e.status];
-    box.className = "ereignis " + e.status;
-    box.innerHTML = '<span class="ereignis-symbol" aria-hidden="true">' + s[0] + "</span><span>" +
-                    "<strong>" + esc(e.name) + "</strong> hat um " + e.uhr + " Uhr " +
-                    (e.status === "fehler" ? "eine Ausgabe gestartet – <strong>Fehler am Gerät</strong>"
-                                           : e.erhalten + (e.erhalten === 1 ? " Tablette" : " Tabletten") + " bekommen" +
-                                             (e.status === "teil" ? " (weniger als geplant)" : "")) +
-                    "<small>" + teile(e) + "</small></span>";
-    box.hidden = false;
-    clearTimeout(ereignisTimer);
-    ereignisTimer = setTimeout(function () { box.hidden = true; }, 12000);
-  }
-
-  function zeichnen(d) {
-    $("d-datum").textContent = d.datum;
-    $("d-uhr").textContent = d.uhrzeit.slice(0, 5);
-    var k = d.kennzahlen;
-    $("k-versorgt").textContent = k.versorgt + " / " + k.nutzer;
-    $("k-versorgt-text").textContent = k.nutzer - k.versorgt ? (k.nutzer - k.versorgt) + " noch offen" : "alle abgeholt";
-    $("k-tabletten").textContent = k.tabletten;
-    $("k-abgeholt").textContent = k.abgeholt7 == null ? "–" : k.abgeholt7 + " %";
-    $("k-fehler").textContent = k.fehler;
-    $("k-fehler-text").textContent = k.fehler ? "⚠ bitte Gerät prüfen" : "✓ alles in Ordnung";
-    $("k-fehler-kachel").classList.toggle("alarm", k.fehler > 0);
-    $("d-scan").hidden = !d.scan_wartet;
-
-    // Neue Ausgabe seit dem letzten Abruf? Dann Banner zeigen und den Eintrag einblenden
-    var neu = d.ereignisse[0];
-    var istNeu = neu && letzteId !== null && neu.id > letzteId && neu.heute;
-    letzteId = neu ? neu.id : 0;
-
-    nutzerZeichnen(d.nutzer);
-    feedZeichnen(d.ereignisse, istNeu ? neu.id : null);
-    verlaufZeichnen(d.verlauf);
-    vorratZeichnen(d.vorrat);
-    if (istNeu) ereignisZeigen(neu);
-  }
-
-  function verbindung(ok, text) {
-    $("d-live").className = "live" + (ok ? "" : " weg");
-    $("d-live-text").textContent = text;
-  }
-
-  function holen() {
-    fetch(QUELLE, { credentials: "same-origin", cache: "no-store" })
-      .then(function (r) {
-        if (r.redirected || !r.ok) throw new Error("abgemeldet");
-        return r.json();
-      })
-      .then(function (d) { zeichnen(d); verbindung(true, "live · " + d.uhrzeit); })
-      .catch(function (f) { verbindung(false, f.message === "abgemeldet" ? "bitte neu anmelden" : "keine Verbindung"); })
-      .then(function () { setTimeout(holen, TAKT); });
-  }
-
-  // Tooltip über den Säulen (Maus und Tastatur)
-  var tip = $("d-tooltip"), rahmen = tip.parentNode;
-  function tipZeigen(ev) {
-    var s = ev.target.closest(".saeule");
-    if (!s) return;
-    tip.textContent = s.dataset.text; tip.hidden = false;
-    var r = s.getBoundingClientRect(), o = rahmen.getBoundingClientRect();
-    var x = Math.min(Math.max(r.left - o.left + r.width / 2, 70), o.width - 70);
-    tip.style.left = x + "px";
-  }
-  $("d-verlauf").addEventListener("mouseover", tipZeigen);
-  $("d-verlauf").addEventListener("focusin", tipZeigen);
-  $("d-verlauf").addEventListener("mouseleave", function () { tip.hidden = true; });
-  $("d-verlauf").addEventListener("focusout", function () { tip.hidden = true; });
-
-  $("vollbild").addEventListener("click", function () {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    feld.addEventListener("input", function () { markieren(z); });
+    markieren(z);
   });
-
-  holen();
-})();
+  document.querySelectorAll("input[name=tag]").forEach(function (r) {
+    r.addEventListener("change", function () {
+      document.querySelectorAll(".zaehler").forEach(function (z) {
+        var f = z.querySelector("input"); f.value = f.dataset[r.value]; markieren(z);
+      });
+    });
+  });
+  document.getElementById("demo-anpassen").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var box = document.getElementById("demo-gespeichert");
+    box.textContent = "Demo: In der echten App wäre das jetzt gespeichert. Hier ändert sich nichts.";
+    box.hidden = false;
+  });
 </script>
 {% endblock %}
