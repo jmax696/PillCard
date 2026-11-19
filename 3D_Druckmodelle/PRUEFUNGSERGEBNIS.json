@@ -1,0 +1,556 @@
+{
+  "scope": "STL-Dateien Geometrie und Dokumentation",
+  "units": "mm, mm3",
+  "method": {
+    "format": "Binary STL",
+    "connectivity_weld_tolerance_mm": 1e-05,
+    "volume": "Signed tetrahedron sum of original STL triangles",
+    "dimensions": "Axis-aligned bounding box in exported print orientation"
+  },
+  "stl_count": 14,
+  "print_count_three_modules_excluding_dummy": 27,
+  "checks_not_performed": [
+    "self_intersection_of_surfaces",
+    "assembled_part_collisions",
+    "motor_and_shaft_fit",
+    "physical_print_fit",
+    "pill_flow_or_single_dose_performance"
+  ],
+  "physical_status": "Nutzer hat Innenhalterung, gemeinsamen Trichter und Innenbauteile gedruckt; Funktionsprüfung nicht bestätigt.",
+  "measured_features": {
+    "cup": {
+      "outer_diameter_mm": 35.6,
+      "inner_diameter_mm": 31.6,
+      "wall_mm": 2.0,
+      "bottom_mm": 2.0,
+      "height_mm": 50.0,
+      "z_planes_mm": [
+        0.0,
+        0.6,
+        2.0,
+        50.0
+      ]
+    },
+    "disc_top_boundary_sizes_mm": [
+      [
+        56.0,
+        56.0
+      ],
+      [
+        10.80001,
+        6.800000000000001
+      ],
+      [
+        4.700000000000003,
+        4.700000000000003
+      ]
+    ],
+    "pocket_size_xy_mm": [
+      10.80001,
+      6.800000000000001
+    ],
+    "pocket_center_xy_mm": [
+      12.243075000000001,
+      30.778370000000002
+    ],
+    "disc_thickness_mm": 4.399993896484375,
+    "dummy_height_mm": 4.0,
+    "nominal_thickness_margin_mm": 0.39999,
+    "centered_aligned_dummy_min_profile_clearance_mm": 0.58951,
+    "profile_fit_scope": "2D convex pocket profile, centered and parallel XY axes, nominal STL geometry only; not full assembly or dispensing validation"
+  },
+  "dummy_design": {
+    "dimensions_mm": [
+      9,
+      5,
+      4
+    ],
+    "plan_corner_radius_mm": 1.8,
+    "top_bottom_edge_radius_mm": 0.2,
+    "shape": "Leicht ovaleres Rechteck mit geraden Seiten; vom Nutzer bestätigt."
+  },
+  "parts": [
+    {
+      "file": "01_Dispenser_Innen_Bauteile/STL/01_Kassettenboden_Stufensitz.stl",
+      "sha256": "31b0b4a613e0b44c608666b7da965d169c058407740e15d49551c0b8b65a22d2",
+      "size_bytes": 117284,
+      "triangles": 2344,
+      "dimensions_xyz_mm": [
+        62.0,
+        72.0,
+        13.899994
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        62.0,
+        72.0,
+        13.899993896484375
+      ],
+      "signed_volume_mm3": 25297.640328,
+      "unique_vertices_after_weld": 1170,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": 0.000328,
+      "quantity_for_three_modules": 3
+    },
+    {
+      "file": "01_Dispenser_Innen_Bauteile/STL/02_Senkrechter_Auslass_ohne_Sensorloecher.stl",
+      "sha256": "fd0dbdcff11ea1a10c03574aabcdb25841c48dbeb2ed33b864ecf26c338c3ecd",
+      "size_bytes": 38484,
+      "triangles": 768,
+      "dimensions_xyz_mm": [
+        16.699999,
+        16.699997,
+        33.0
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        16.69999885559082,
+        16.699996948242188,
+        33.0
+      ],
+      "signed_volume_mm3": 2444.194842,
+      "unique_vertices_after_weld": 384,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": -0.000158,
+      "quantity_for_three_modules": 3
+    },
+    {
+      "file": "01_Dispenser_Innen_Bauteile/STL/03_Dosierscheibe_Formtasche.stl",
+      "sha256": "7ee8a86aac4de5f033429aac130c2373efbb20c04b75a06dbd109b976a30f82d",
+      "size_bytes": 25184,
+      "triangles": 502,
+      "dimensions_xyz_mm": [
+        56.0,
+        56.0,
+        4.399994
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        56.0,
+        56.0,
+        4.399993896484375
+      ],
+      "signed_volume_mm3": 10454.082399,
+      "unique_vertices_after_weld": 249,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": 0.000399,
+      "quantity_for_three_modules": 3
+    },
+    {
+      "file": "01_Dispenser_Innen_Bauteile/STL/04_Untere_Platte_Abstreifdeckel.stl",
+      "sha256": "5a449df917bb6631d854a98e6991a956ec6ba946bf6c3a969c541591144a5c76",
+      "size_bytes": 22484,
+      "triangles": 448,
+      "dimensions_xyz_mm": [
+        62.0,
+        72.0,
+        6.0
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        62.0,
+        72.0,
+        6.0
+      ],
+      "signed_volume_mm3": 23743.095374,
+      "unique_vertices_after_weld": 224,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": 0.000374,
+      "quantity_for_three_modules": 3
+    },
+    {
+      "file": "01_Dispenser_Innen_Bauteile/STL/05_Motor_Steckhalter_verstaerkt.stl",
+      "sha256": "a643ae112f939a6ae38d4e6e6b07c9367098a46e269f74ba408a2b6b5bc30de7",
+      "size_bytes": 26484,
+      "triangles": 528,
+      "dimensions_xyz_mm": [
+        60.0,
+        18.300003,
+        41.350006
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        60.0,
+        18.300003051757812,
+        41.350006103515625
+      ],
+      "signed_volume_mm3": 10046.658519,
+      "unique_vertices_after_weld": 266,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": -0.000481,
+      "quantity_for_three_modules": 3
+    },
+    {
+      "file": "01_Dispenser_Innen_Bauteile/STL/06_Wellenadapter_D9_Hplus1.stl",
+      "sha256": "880ad96d3ee359a1d560cea0f1a96694cc0f38117ce063c291e20ad2debb1329",
+      "size_bytes": 48984,
+      "triangles": 978,
+      "dimensions_xyz_mm": [
+        19.597847,
+        18.192726,
+        14.949997
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        19.59784698486328,
+        18.192726135253906,
+        14.949996948242188
+      ],
+      "signed_volume_mm3": 883.764092,
+      "unique_vertices_after_weld": 491,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": 9.2e-05,
+      "quantity_for_three_modules": 3
+    },
+    {
+      "file": "01_Dispenser_Innen_Bauteile/STL/07_Trichter_Rohr_Fester_Auflagerand.stl",
+      "sha256": "1537ae679c8b669fbd7881353b35ae490770d5ca2deb70e8a9ba0c62b6c3b6dc",
+      "size_bytes": 64584,
+      "triangles": 1290,
+      "dimensions_xyz_mm": [
+        60.0,
+        93.0,
+        88.300018
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        60.0,
+        93.0,
+        88.30001831054688
+      ],
+      "signed_volume_mm3": 18937.744564,
+      "unique_vertices_after_weld": 645,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": -0.000436,
+      "quantity_for_three_modules": 3
+    },
+    {
+      "file": "02_Innenhalterung/STL_GEMEINSAMER_TRICHTER/G14_Gemeinsamer_Trichter.stl",
+      "sha256": "65aadb7185728a7d784c545305f6412f79ab7bfe56e8705c7358df3b72bc26f9",
+      "size_bytes": 25284,
+      "triangles": 504,
+      "dimensions_xyz_mm": [
+        160.0,
+        46.0,
+        70.0
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        160.0,
+        46.0,
+        70.0
+      ],
+      "signed_volume_mm3": 48680.953851,
+      "unique_vertices_after_weld": 252,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": -0.000149,
+      "quantity_for_three_modules": 1
+    },
+    {
+      "file": "02_Innenhalterung/STL_GESAMTES_GESTELL_UND_BECHER/B01_Becher_D35_6_H50_Wand2.stl",
+      "sha256": "9432e7f33ed84270c10c27c1288ad51b81b28743f18d457f30b7b922e0fd7d32",
+      "size_bytes": 63884,
+      "triangles": 1276,
+      "dimensions_xyz_mm": [
+        35.600006,
+        35.599998,
+        50.0
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        35.600006103515625,
+        35.599998474121094,
+        50.0
+      ],
+      "signed_volume_mm3": 12102.804484,
+      "unique_vertices_after_weld": 640,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": -0.000516,
+      "quantity_for_three_modules": 1
+    },
+    {
+      "file": "02_Innenhalterung/STL_GESAMTES_GESTELL_UND_BECHER/H01_Bodenplatte_mit_Bechermulde_und_Kabelwegen.stl",
+      "sha256": "e8b95388d85a136391146df5f858a98bd3e15ab33989baa0667a47c0e23dba52",
+      "size_bytes": 301884,
+      "triangles": 6036,
+      "dimensions_xyz_mm": [
+        191.0,
+        122.0,
+        6.0
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        191.0,
+        122.0,
+        6.0
+      ],
+      "signed_volume_mm3": 133139.463179,
+      "unique_vertices_after_weld": 3012,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": 0.000179,
+      "quantity_for_three_modules": 1
+    },
+    {
+      "file": "02_Innenhalterung/STL_GESAMTES_GESTELL_UND_BECHER/H02_Seitenrahmen_mit_Trichterauflage_Links.stl",
+      "sha256": "5c9ad7f660289af56f8754885bca90cc7c307355fba6e605b34b2634bc143d95",
+      "size_bytes": 30084,
+      "triangles": 600,
+      "dimensions_xyz_mm": [
+        147.0,
+        113.0,
+        14.500002
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        147.0,
+        113.0,
+        14.500001907348633
+      ],
+      "signed_volume_mm3": 59974.908268,
+      "unique_vertices_after_weld": 298,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": 0.000268,
+      "quantity_for_three_modules": 1
+    },
+    {
+      "file": "02_Innenhalterung/STL_GESAMTES_GESTELL_UND_BECHER/H03_Seitenrahmen_mit_Trichterauflage_Rechts.stl",
+      "sha256": "16d201ec8d8911a52f6ad9dbc7c8b4df33c99f1dc1cc02786106f4797c8466a8",
+      "size_bytes": 29884,
+      "triangles": 596,
+      "dimensions_xyz_mm": [
+        147.0,
+        113.0,
+        16.500015
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        147.0,
+        113.0,
+        16.500015258789062
+      ],
+      "signed_volume_mm3": 60887.866848,
+      "unique_vertices_after_weld": 296,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": -0.001152,
+      "quantity_for_three_modules": 1
+    },
+    {
+      "file": "02_Innenhalterung/STL_GESAMTES_GESTELL_UND_BECHER/H04_Servoplatte_mit_sechs_festen_Stuetzen.stl",
+      "sha256": "53cd53b38a0c925bf7234a5a333a54b2813c831546e18aad5ea3fc05e433e4a5",
+      "size_bytes": 119284,
+      "triangles": 2384,
+      "dimensions_xyz_mm": [
+        191.0,
+        115.0,
+        42.0
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        191.0,
+        115.0,
+        42.0
+      ],
+      "signed_volume_mm3": 110025.692673,
+      "unique_vertices_after_weld": 1192,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "difference_from_previous_volume_mm3": -0.000327,
+      "quantity_for_three_modules": 1
+    },
+    {
+      "file": "04_Pillen_Dummys/Pillen_Dummy_rechteckig_9x5x4mm.stl",
+      "sha256": "090816bc1a1c6689f498ba1e5c79c510dd72970e34f970501ba1b0bd8ac45908",
+      "size_bytes": 140084,
+      "triangles": 2800,
+      "dimensions_xyz_mm": [
+        9.0,
+        5.0,
+        4.0
+      ],
+      "bounds_min_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "bounds_max_mm": [
+        9.0,
+        5.0,
+        4.0
+      ],
+      "signed_volume_mm3": 168.405795,
+      "unique_vertices_after_weld": 1402,
+      "connected_components": 1,
+      "boundary_edges": 0,
+      "nonmanifold_edges": 0,
+      "inconsistent_winding_edges": 0,
+      "degenerate_triangles": 0,
+      "duplicate_triangles": 0,
+      "quantity_for_three_modules": 0
+    }
+  ],
+  "assembly_fit_status": "Teilweise passende Nennmasse gemessen; dass alle gedruckten Teile ineinanderpassen, ist ohne vollständige Baugruppe und reale Passprobe nicht nachgewiesen.",
+  "nominal_interface_checks": {
+    "scope": "Nominelle Geometrie der vorhandenen STLs; keine Montage- oder Druckpassung bewiesen",
+    "module_base_and_lower_plate": {
+      "recess_xy_mm": [
+        58.0,
+        68.0
+      ],
+      "tongue_xy_mm": [
+        57.599999999999994,
+        67.6
+      ],
+      "nominal_xy_clearance_per_side_mm": [
+        0.2,
+        0.2
+      ],
+      "condition": "Gleiche XY-Orientierung und zentrierter Einsatz. Tiefe, Rastung und reale Passung nicht geprüft."
+    },
+    "lower_plate_and_upper_funnel": {
+      "opening_xy_mm": [
+        15.2,
+        11.199999999999996
+      ],
+      "funnel_end_xy_mm": [
+        14.8,
+        10.8
+      ],
+      "nominal_xy_clearance_per_side_mm": [
+        0.2,
+        0.2
+      ],
+      "condition": "Zentrierte XY-Ausrichtung vorausgesetzt; vollständige Kontaktgeometrie und Einbaulage nicht geprüft."
+    },
+    "cup_and_base_plate": {
+      "cup_outer_radius_mm": 17.8,
+      "base_plate_top_mouth_radius_mm": 18.502,
+      "nominal_radial_clearance_at_top_mm": 0.702,
+      "condition": "Nur Öffnung der Mulde an ihrer Oberkante; tieferer Verlauf und eingesetzte Becherhöhe nicht geprüft."
+    },
+    "unverified_interfaces": [
+      "Seitenrahmen zu Bodenplatte und Servoplatte",
+      "Motor-Steckhalter zu Servoplatte",
+      "Dosierscheibe zu Kassettenboden und Abstreifdeckel in Betriebsstellung",
+      "Wellenadapter zu Motor und Dosierscheibe",
+      "beide Trichter zur Innenhalterung und zum Becher",
+      "vollständige Baugruppe und Drucktoleranzen"
+    ],
+    "conclusion": "Teilweise passende Nennmasse ermittelt; dass alle 3D-Druckteile zusammenpassen, bleibt unbewiesen."
+  }
+}
