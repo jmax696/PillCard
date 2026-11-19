@@ -6,3 +6,4 @@ pi/*.db
 pi/*.db-*
 pi/*.log
 pi/ntfy_thema.txt
+.DS_Store
