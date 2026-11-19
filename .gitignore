@@ -5,3 +5,4 @@ pi/geheim.key
 pi/*.db
 pi/*.db-*
 pi/*.log
+pi/ntfy_thema.txt

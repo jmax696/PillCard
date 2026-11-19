@@ -22,6 +22,7 @@ import serial
 from mfrc522 import MFRC522
 
 import datenbank
+import mitteilung
 
 ORDNER = Path(__file__).resolve().parent
 UNBEKANNT = ORDNER / "unbekannte_uids.txt"
@@ -240,6 +241,20 @@ def karte_bearbeiten(uid, esp, db):
     bestellt = " ".join(f"K{k}={n}" for k, n in sorted(kammern.items()))
     erhalten = " ".join(f"K{k}={n}" for k, n in sorted((ergebnis or {}).items()))
     print(f"  bestellt {bestellt}, erhalten {erhalten or 'FEHLER'}, Becher {becher or 'unbekannt'}")
+    if entnommen:
+        einnahme_melden(db, nummer, entnommen)
+
+
+def einnahme_melden(db, auftrag_nr, zeit):
+    """Becher wurde nach der Ausgabe hochgenommen: Angehörige bekommen eine Push-Mitteilung."""
+    einnahme = datenbank.einnahme_zu_auftrag(db, auftrag_nr)
+    if not einnahme or not mitteilung.thema():
+        return
+    text = f"{einnahme['name']} hat um {zeit[11:16]} die Tabletten genommen."
+    if einnahme["medikamente"]:
+        text += "\n" + ", ".join(einnahme["medikamente"])
+    print(f"  Mitteilung an Angehörige: {text.splitlines()[0]}", flush=True)
+    mitteilung.im_hintergrund(text, tags=("pill", "white_check_mark"))
 
 
 def entnahmen_eintragen(esp, db):
@@ -250,6 +265,7 @@ def entnahmen_eintragen(esp, db):
     for nummer, zeit in esp.entnahmen_abholen():
         if datenbank.becher_entnommen(db, nummer, zeit):
             print(f"[{zeit[11:]}] Becher von Auftrag {nummer} entnommen", flush=True)
+            einnahme_melden(db, nummer, zeit)
         else:
             print(f"  !! Entnahme für unbekannten Auftrag {nummer} gemeldet")
 

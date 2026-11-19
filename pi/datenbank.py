@@ -207,6 +207,20 @@ def becher_entnommen(db, auftrag_nr, zeit):
                           (zeit, auftrag_nr)).rowcount > 0
 
 
+def einnahme_zu_auftrag(db, auftrag_nr):
+    """Name und Medikamente der jüngsten Einnahme mit dieser Auftragsnummer (für die Mitteilung)."""
+    einnahme = db.execute("""SELECT e.id, n.name FROM einnahmen e JOIN nutzer n ON n.id = e.nutzer_id
+                             WHERE e.id = (SELECT MAX(id) FROM einnahmen WHERE auftrag_nr = ?)""",
+                          (auftrag_nr,)).fetchone()
+    if not einnahme:
+        return None
+    medikamente = [r["medikament"] for r in db.execute(
+        """SELECT k.medikament FROM ausgaben a JOIN kammern k ON k.nr = a.kammer
+           WHERE a.einnahme_id = ? AND COALESCE(a.erhalten, a.bestellt) > 0 ORDER BY a.kammer""",
+        (einnahme["id"],))]
+    return {"name": einnahme["name"], "medikamente": medikamente}
+
+
 def vorrat_status(db):
     """Pro Kammer: Vorrat, Bedarf aller Nutzer pro Tag, wie viele Tage er reicht, ob er knapp wird."""
     zeilen = []
