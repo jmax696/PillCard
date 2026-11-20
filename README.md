@@ -1,101 +1,66 @@
 # PillCard
 
-Ein Tablettenspender für Senioren, der über RFID-Karten programmiert wird.
+Ein Tablettenspender mit drei Kammern, den sich mehrere Personen teilen. Jede Person hält ihre RFID-Karte an das Gerät und bekommt die Tabletten, die heute für sie vorgesehen sind, in einen Becher, und zwar nur einmal pro Tag. Am Gerät selbst wird nichts eingestellt.
 
-Projekt im Kurs **Hands-on HCI** (HSG, Herbst 2026), Themenbereich 1: *Augmenting Humans in Everyday Life*.
+Projekt im Kurs **Hands-on HCI** (Universität St.Gallen, HS 2026), Team: Anastasia Eric, Max Jäckle, Kristian Suntev.
 
-## Idee
+> Hinweis: Der erste Plan vom 27.10. (Arduino Uno, Plan auf der Karte, Lichtschranken) steht noch in `REQUIREMENTS.md`. Der fertige Prototyp ist anders aufgebaut, siehe unten.
 
-Viele ältere Menschen nehmen mehrere Medikamente zu unterschiedlichen Zeiten ein. Elektronische Spender gibt es bereits, aber sie müssen am Gerät eingestellt werden. Das ist für viele Senioren schwierig.
+## So funktioniert es
 
-Bei PillCard ist der Medikamentenplan auf einer persönlichen RFID-Karte gespeichert. Pflegepersonal oder Angehörige richten die Karte einmal ein. Die Senioren halten danach nur noch ihre Karte an das Lesefeld.
+1. Die Person hält ihre Karte an das Lesefeld.
+2. Der **Raspberry Pi** liest die Karte und prüft in der Datenbank: Ist die Karte bekannt? Gab es heute schon etwas? Was steht heute im Plan?
+3. Wenn alles passt, schickt der Pi dem **ESP32** einen Auftrag, zum Beispiel `AUFTRAG 17 K1=1 K3=2`.
+4. Der ESP32 wartet auf den Becher, dreht die Dosierscheiben Kammer für Kammer und prüft mit einem **Mikrofon**, ob jede Tablette gefallen ist.
+5. Ein **Kontakt aus Kupferband** unter dem Becher merkt, wann der Becher abgeholt wird. Der Pi trägt die Abholung ein und kann Angehörigen eine Push-Mitteilung schicken.
 
-## Was PillCard besonders macht
+Einstellen, Karten anlernen, Vorrat und Verlauf laufen über eine **lokale Website** auf dem Pi (Port 8080, nur im Heimnetz).
 
-1. **Keine Programmierung durch Senioren.** Die Einstellungen kommen über die RFID-Karte und nicht über das Gerät.
-2. **Mehrere Bewohner nutzen einen Spender.** Jede Person hat eine eigene Karte, alle nutzen dasselbe Gerät.
-3. **Immer die verschriebene Kombination.** Wurden die Tabletten schon ausgegeben, gibt es keine weitere Ausgabe.
-
-## Ablauf einer Ausgabe
-
-1. Die Person hält ihre RFID-Karte an das Lesefeld.
-2. Der Spender liest den Plan und prüft, ob die Dosis schon ausgegeben wurde.
-3. Falls nicht: Die Servos geben die verschriebenen Tabletten aus den Kammern in den Becher aus, die Lichtschranken zählen mit, die grüne LED leuchtet.
-4. Falls doch: Es gibt keine Ausgabe. Die rote LED leuchtet und das LCD-Display zeigt an, dass die Dosis schon genommen wurde.
-5. Ein Kontaktsensor in der Schale erkennt, ob der Becher entnommen wurde.
-
-## Aufbau
+## Hardware
 
 | Bauteil | Aufgabe |
 |---|---|
-| Arduino (Elegoo Uno R3) | Steuerung, Ausgaben speichern, Bestand zählen |
-| RFID-RC522 und Karten | Person, Plan und verschriebene Menge lesen |
-| 3 Servomotoren | je Kammer eine Ausgabe |
-| 3 Lichtschranken (eine pro Kammer) | ausgegebene Tabletten zählen |
-| Kontaktsensor aus Kupferband | erkennt, ob der Becher in der Schale steht |
-| LCD-Display | Hinweise für den Nutzer |
-| Grüne und rote LED | Statusanzeige |
-| Gehäuse aus dem 3D-Drucker | 3 Kammern, Lesefeld, Ausgabeschale mit Becher |
+| Raspberry Pi | liest die Karten (RC522), Datenbank (SQLite), Website |
+| ESP32 (Keyestudio) | Servos, Mikrofon, Becherkontakt, Display, Lämpchen |
+| RFID-Leser RC522 mit Karten und Chips | erkennt die Person |
+| 3 Mikroservos SG90 | drehen die Dosierscheiben |
+| Analoges Mikrofonmodul | hört jede fallende Tablette |
+| Kupferband auf zwei Flächen | erkennt, ob der Becher steht |
+| LCD 16×2, LEDs grün/rot, 3 Leer-LEDs | Rückmeldung am Gerät |
+| Netzteilmodul 5 V | Strom für Servos und Display |
+| Gehäuse | 4 mm Holz, lasergeschnitten; Innenteile 3D-gedruckt |
 
-Plan B für das Zählen: ein Mikrofon unter dem Becher, das die fallenden Tabletten erkennt.
+Pi und ESP32 sind über ein USB-Kabel verbunden (Strom und Textprotokoll, 115200 Baud).
 
-Details zu Anforderungen, Sensoren und offenen Punkten: [REQUIREMENTS.md](REQUIREMENTS.md)
+## Ordner
 
-## Stand
-
-- [x] Idee und Idea Pitch (27.10.2026)
-- [x] 3D-Modell des Gehäuses
-- [ ] Gehäuse drucken
-- [ ] Elektronik aufbauen und einzeln testen
-- [ ] Arduino-Code für den gesamten Ablauf
-- [ ] Prototype Demo (29.10.2026)
-- [ ] Video Showcase (30.10.2026)
-- [ ] Portfolio-Abgabe: Bericht, Video, Code, Schaltpläne (20.11.2026)
-
-### Morgen angehen (30.10.2026, vor dem Video Showcase um 16:00)
-
-- [ ] Sensor für die Becherentnahme (Kupferkontakt in der Schale, IO13)
-- [ ] Motorhalterung im Gehäuse
-- [ ] Mikrofon kalibrieren bzw. alles einmal zusammenbauen
-
-### Später
-
-- [ ] Kamera anschliessen: E-Rezept-QR-Code lesen, wenn eine Kammer leer ist oder das Medikament wechselt,
-      und für die Kammer ein neues Medikamenten-Profil anlegen (FR-16 bis FR-18 in [REQUIREMENTS.md](REQUIREMENTS.md))
-
-## Repo-Struktur
-
-PlatformIO-Projekt mit mehreren Programmen. In VS Code unten in der Statusleiste die
-Umgebung wählen, dann hochladen und den Seriellen Monitor öffnen (9600 Baud).
-
-| Umgebung | Ordner | Zweck |
-|---|---|---|
-| `env:rfidtest` | `src/rfidtest/` | RC522 dauerhaft abfragen und Fehler erklären, Kabeltest mit `k` |
-| `env:bauteiltest` | `src/bauteiltest/` | jedes Bauteil einzeln prüfen (Menü im Seriellen Monitor) |
-| `env:codieren` | `src/codieren/` | Medikamentenplan auf eine Karte schreiben (Profile 1–3) |
-| `env:decodieren` | `src/decodieren/` | Karte lesen und Plan anzeigen |
-
-- `include/Hardware.h`: Pinbelegung, Servowinkel, Sensorpegel
-- `lib/PillCardFormat/`: Kartenformat, Lesen und Schreiben (von allen Programmen genutzt).
-  Funktioniert mit dem I²C-Leser und dem SPI-Board, umgeschaltet in `platformio.ini`.
-- `lib/MFRC522_I2C/`: Bibliothek für den I²C-Leser, Kopie von `kkloesener/MFRC522_I2C`
-  (Public Domain) mit einer Korrektur, damit sie auf dem Uno kompiliert
-- `docs/Verkabelung.md`: Verkabelung, Stromversorgung, Testreihenfolge
-- `pi/`: Programm für den Raspberry Pi (RFID, Plan, Aufträge an den ESP32) und die lokale Website,
-  siehe `docs/Datenbank.md` und `docs/Website.md`
-
-### Kartenformat
-
-Auf MIFARE-Classic-Karten in Sektor 1 (Blöcke 4–6, 48 Byte), Werksschlüssel `FF…FF`:
-
-| Bytes | Inhalt |
+| Pfad | Inhalt |
 |---|---|
-| 0–1 | Kennung `PC` |
-| 2 | Formatversion (1) |
-| 3–4 | Personen-ID |
-| 5–16 | Name (max. 11 Zeichen) |
-| 17 | Anzahl Einnahmezeitpunkte (max. 4) |
-| 18–37 | 4 × Einnahme: Stunde, Minute, Anzahl Kammer 1/2/3 |
-| 38–43 | verschriebene Menge je Kammer (3 × 16 Bit) |
-| 44–46 | reserviert |
-| 47 | CRC-8-Prüfsumme |
+| `arduino-ide/PillCard_Demo/` | Firmware des ESP32 (aktueller Stand) |
+| `arduino-ide/Kammer1_Test/`, `LCD_Test/`, `LCD_Pintest/`, `Kammer1_RFID/`, `Becher_Test/` | Einzeltests der Bauteile |
+| `pi/pillcard.py` | Steuerprogramm: Karte lesen, entscheiden, Aufträge an den ESP32 |
+| `pi/datenbank.py` | SQLite-Schema und Abfragen |
+| `pi/web.py`, `pi/templates/`, `pi/static/` | Website |
+| `pi/erezept.py` | QR-Code eines Schweizer E-Rezepts lesen (CHMED16A) |
+| `pi/mitteilung.py` | Push-Mitteilung an Angehörige über ntfy |
+| `pi/esp_befehl.py`, `pi/demo_nutzer.py` | Testen am ESP32, Demo-Ansicht |
+| `pi/start.sh`, `web.sh`, `stop.sh`, `esp_flashen.sh` | Start mit Neustart nach Absturz, Beenden, ESP32 bespielen |
+| `docs/Designentscheidungen.md` | warum Drehrad statt Kolben, Mikrofon statt Lichtschranken, Kupferkontakt |
+| `docs/Verkabelung.md` | Pinbelegung, Strom, Aufbau |
+| `docs/Schaltplan_ESP32.*`, `docs/Schaltplan_RaspberryPi.*` | Schaltpläne |
+| `docs/Datenbank.md`, `docs/ER_Datenbank.*` | Datenbank |
+| `docs/Website.md` | Website und Betrieb auf dem Pi |
+| `docs/Test-Rezepte/` | selbst erzeugte Test-E-Rezepte (keine echten Rezepte) |
+| `3D_Druckmodelle/` | STL-Dateien aller Druckteile mit Massen und Prüfskripten |
+| `src/`, `lib/`, `include/`, `platformio.ini` | frühe PlatformIO-Variante (Arduino Uno), nicht mehr benutzt |
+
+## Nachbauen
+
+1. **Verkabeln** nach `docs/Verkabelung.md` und den Schaltplänen in `docs/`.
+2. **ESP32 bespielen:** `arduino-ide/PillCard_Demo/PillCard_Demo.ino` in der Arduino IDE öffnen, Board „ESP32 Dev Module“.
+3. **Raspberry Pi einrichten** nach `docs/Website.md` (Abschnitt „Betrieb auf dem Pi“). Steuerprogramm und Website starten über `pi/start.sh` und `pi/web.sh`.
+4. **Innenteile drucken:** Druckdateien und Masse in `3D_Druckmodelle/README.md`. Die Laserdateien für das Holzgehäuse liegen noch nicht im Repository.
+
+## Grenzen des Prototyps
+
+PillCard ist ein Studienprototyp und kein Medizinprodukt. Das Gerät erkennt die Abholung, nicht die Einnahme. Die Website läuft ohne HTTPS und nur im Heimnetz, und die Signatur von E-Rezepten wird nicht geprüft.
